@@ -1,0 +1,337 @@
+ <!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jewelry CRM</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a1a; }
+    .header { background: #6c47ff; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 18px; }
+    .header span { font-size: 13px; opacity: 0.85; }
+    .logout { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .nav { background: #fff; border-bottom: 1px solid #e0e0e0; display: flex; gap: 0; overflow-x: auto; }
+    .nav button { padding: 14px 20px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #666; border-bottom: 2px solid transparent; white-space: nowrap; }
+    .nav button.active { color: #6c47ff; border-bottom-color: #6c47ff; }
+    .content { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .tab { display: none; }
+    .tab.active { display: block; }
+    .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .card h2 { font-size: 15px; margin-bottom: 16px; color: #333; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .stat .val { font-size: 22px; font-weight: 700; }
+    .stat .lbl { font-size: 12px; color: #666; margin-top: 4px; }
+    .green { color: #059669; }
+    .red { color: #dc2626; }
+    .blue { color: #2563eb; }
+    .purple { color: #6c47ff; }
+    form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    input, select { padding: 9px 12px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 13px; outline: none; }
+    input:focus, select:focus { border-color: #6c47ff; }
+    .btn { padding: 9px 18px; background: #6c47ff; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #5a35e8; }
+    .btn-red { background: #dc2626; }
+    .btn-red:hover { background: #b91c1c; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 12px; background: #f7f7f7; color: #666; font-weight: 600; }
+    td { padding: 10px 12px; border-top: 1px solid #f0f0f0; }
+    tr:hover td { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-income { background: #d1fae5; color: #065f46; }
+    .badge-expense { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>Jewelry CRM</h1>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="userName"></span>
+    <button class="logout" onclick="logout()">Вийти</button>
+  </div>
+</div>
+<div class="nav">
+  <button class="active" onclick="showTab('dashboard')">Дашборд</button>
+  <button onclick="showTab('incomes')">Доходи</button>
+  <button onclick="showTab('expenses')">Витрати</button>
+  <button onclick="showTab('purchases')">Закупівлі</button>
+  <button onclick="showTab('distribution')">Розподіл</button>
+</div>
+<div class="content">
+
+  <!-- Дашборд -->
+  <div class="tab active" id="tab-dashboard">
+    <div class="stats">
+      <div class="stat"><div class="val green" id="d-income">0 ₴</div><div class="lbl">Доходи</div></div>
+      <div class="stat"><div class="val red" id="d-expense">0 ₴</div><div class="lbl">Витрати</div></div>
+      <div class="stat"><div class="val blue" id="d-purchase">0 ₴</div><div class="lbl">Закупівлі</div></div>
+      <div class="stat"><div class="val purple" id="d-profit">0 ₴</div><div class="lbl">Прибуток</div></div>
+    </div>
+    <div class="card">
+      <h2>Останні операції</h2>
+      <table><thead><tr><th>Дата</th><th>Тип</th><th>Сума</th><th>Опис</th></tr></thead>
+      <tbody id="d-recent"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Доходи -->
+  <div class="tab" id="tab-incomes">
+    <div class="card">
+      <h2>Додати дохід</h2>
+      <form onsubmit="addIncome(event)">
+        <input type="number" id="i-amount" placeholder="Сума ₴" required style="width:120px">
+        <select id="i-type">
+          <option value="Накладений платіж">Накладений платіж</option>
+          <option value="Розрахунковий рахунок">Розрахунковий рахунок</option>
+          <option value="Карта">Карта</option>
+        </select>
+        <input type="text" id="i-desc" placeholder="Опис" style="width:180px">
+        <input type="date" id="i-date" required>
+        <button class="btn" type="submit">Додати</button>
+      </form>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Дата</th><th>Тип</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
+      <tbody id="incomes-list"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Витрати -->
+  <div class="tab" id="tab-expenses">
+    <div class="card">
+      <h2>Додати витрату</h2>
+      <form onsubmit="addExpense(event)">
+        <input type="number" id="e-amount" placeholder="Сума ₴" required style="width:120px">
+        <select id="e-cat">
+          <option value="Закупівля">Закупівля</option>
+          <option value="Реклама">Реклама</option>
+          <option value="Binotel">Binotel</option>
+          <option value="Сайт">Сайт</option>
+          <option value="Пакування">Пакування</option>
+          <option value="Доставка">Доставка</option>
+          <option value="Податки">Податки</option>
+          <option value="Зарплата">Зарплата</option>
+          <option value="Інше">Інше</option>
+        </select>
+        <input type="text" id="e-desc" placeholder="Опис" style="width:180px">
+        <input type="date" id="e-date" required>
+        <button class="btn" type="submit">Додати</button>
+      </form>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Дата</th><th>Категорія</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
+      <tbody id="expenses-list"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Закупівлі -->
+  <div class="tab" id="tab-purchases">
+    <div class="card">
+      <h2>Додати закупівлю</h2>
+      <form onsubmit="addPurchase(event)">
+        <input type="number" id="p-amount" placeholder="Сума ₴" required style="width:120px">
+        <input type="text" id="p-supplier" placeholder="Постачальник" style="width:180px">
+        <input type="text" id="p-desc" placeholder="Опис" style="width:180px">
+        <input type="date" id="p-date" required>
+        <button class="btn" type="submit">Додати</button>
+      </form>
+    </div>
+    <div class="card" id="purchase-calc" style="display:none">
+      <h2>Калькулятор наступної закупівлі</h2>
+      <p id="calc-text" style="font-size:14px;color:#333;line-height:1.8"></p>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Дата</th><th>Постачальник</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
+      <tbody id="purchases-list"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Розподіл -->
+  <div class="tab" id="tab-distribution">
+    <div class="card">
+      <h2>Розподіл коштів</h2>
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px">
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Оборот за тиждень (₴)</label>
+          <input type="number" id="dist-amount" placeholder="Введи суму" style="width:180px">
+        </div>
+        <button class="btn" onclick="calcDistribution()">Розрахувати</button>
+      </div>
+      <div id="dist-result" style="display:none">
+        <table><thead><tr><th>Напрям</th><th>%</th><th>Сума</th></tr></thead>
+        <tbody id="dist-rows"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+const API = '/api';
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+document.getElementById('userName').textContent = user.company_name || user.email || '';
+
+function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'incomes') loadIncomes();
+  if (name === 'expenses') loadExpenses();
+  if (name === 'purchases') loadPurchases();
+}
+
+async function api(path, method = 'GET', body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 401) { logout(); return; }
+  return res.json();
+}
+
+function fmt(n) { return Number(n).toLocaleString('uk-UA') + ' ₴'; }
+function fmtDate(d) { return new Date(d).toLocaleDateString('uk-UA'); }
+
+async function loadDashboard() {
+  const [incomes, expenses, purchases] = await Promise.all([
+    api('/incomes'), api('/expenses'), api('/purchases')
+  ]);
+  const totalIncome = incomes.reduce((s, r) => s + +r.amount, 0);
+  const totalExpense = expenses.reduce((s, r) => s + +r.amount, 0);
+  const totalPurchase = purchases.reduce((s, r) => s + +r.amount, 0);
+  const profit = totalIncome - totalExpense - totalPurchase;
+  document.getElementById('d-income').textContent = fmt(totalIncome);
+  document.getElementById('d-expense').textContent = fmt(totalExpense);
+  document.getElementById('d-purchase').textContent = fmt(totalPurchase);
+  document.getElementById('d-profit').textContent = fmt(profit);
+  const recent = [
+    ...incomes.slice(0,5).map(r => ({date: r.date, type: r.type, amount: +r.amount, desc: r.description, cls: 'badge-income'})),
+    ...expenses.slice(0,5).map(r => ({date: r.date, type: r.category, amount: -r.amount, desc: r.description, cls: 'badge-expense'}))
+  ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,10);
+  document.getElementById('d-recent').innerHTML = recent.map(r =>
+    `<tr><td>${fmtDate(r.date)}</td><td><span class="badge ${r.cls}">${r.type}</span></td>
+     <td style="color:${r.amount>0?'#059669':'#dc2626'}">${r.amount>0?'+':''}${fmt(Math.abs(r.amount))}</td>
+     <td>${r.desc||''}</td></tr>`
+  ).join('');
+}
+
+async function loadIncomes() {
+  const data = await api('/incomes');
+  document.getElementById('incomes-list').innerHTML = data.map(r =>
+    `<tr><td>${fmtDate(r.date)}</td><td>${r.type}</td><td class="green">${fmt(r.amount)}</td>
+     <td>${r.description||''}</td><td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`
+  ).join('');
+}
+
+async function addIncome(e) {
+  e.preventDefault();
+  await api('/incomes', 'POST', {
+    amount: document.getElementById('i-amount').value,
+    type: document.getElementById('i-type').value,
+    description: document.getElementById('i-desc').value,
+    date: document.getElementById('i-date').value
+  });
+  e.target.reset();
+  loadIncomes();
+}
+
+async function deleteIncome(id) {
+  await api('/incomes/' + id, 'DELETE');
+  loadIncomes();
+}
+
+async function loadExpenses() {
+  const data = await api('/expenses');
+  document.getElementById('expenses-list').innerHTML = data.map(r =>
+    `<tr><td>${fmtDate(r.date)}</td><td>${r.category}</td><td class="red">${fmt(r.amount)}</td>
+     <td>${r.description||''}</td><td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`
+  ).join('');
+}
+
+async function addExpense(e) {
+  e.preventDefault();
+  await api('/expenses', 'POST', {
+    amount: document.getElementById('e-amount').value,
+    category: document.getElementById('e-cat').value,
+    description: document.getElementById('e-desc').value,
+    date: document.getElementById('e-date').value
+  });
+  e.target.reset();
+  loadExpenses();
+}
+
+async function deleteExpense(id) {
+  await api('/expenses/' + id, 'DELETE');
+  loadExpenses();
+}
+
+async function loadPurchases() {
+  const data = await api('/purchases');
+  document.getElementById('purchases-list').innerHTML = data.map(r =>
+    `<tr><td>${fmtDate(r.date)}</td><td>${r.supplier||''}</td><td class="blue">${fmt(r.amount)}</td>
+     <td>${r.description||''}</td><td><button class="btn btn-red" onclick="deletePurchase(${r.id})">✕</button></td></tr>`
+  ).join('');
+  if (data.length > 0) {
+    const last = +data[0].amount;
+    const next = (last * 1.05).toFixed(0);
+    document.getElementById('purchase-calc').style.display = 'block';
+    document.getElementById('calc-text').innerHTML =
+      `Остання закупівля: <b>${fmt(last)}</b><br>
+       Рекомендована наступна: <b>${fmt(next)}</b> (+5%)<br>
+       Потенційний оборот при націнці 2.5×: <b>${fmt(next * 2.5)}</b><br>
+       Валовий прибуток: <b>${fmt(next * 2.5 - next)}</b>`;
+  }
+}
+
+async function addPurchase(e) {
+  e.preventDefault();
+  await api('/purchases', 'POST', {
+    amount: document.getElementById('p-amount').value,
+    supplier: document.getElementById('p-supplier').value,
+    description: document.getElementById('p-desc').value,
+    date: document.getElementById('p-date').value
+  });
+  e.target.reset();
+  loadPurchases();
+}
+
+async function deletePurchase(id) {
+  await api('/purchases/' + id, 'DELETE');
+  loadPurchases();
+}
+
+async function calcDistribution() {
+  const amount = +document.getElementById('dist-amount').value;
+  if (!amount) return;
+  const s = await api('/settings');
+  const rows = [
+    ['Закупівля товару', s.purchase_percent, amount * s.purchase_percent / 100],
+    ['Реклама', s.ads_percent, amount * s.ads_percent / 100],
+    ['Буфер / резерв', s.buffer_percent, amount * s.buffer_percent / 100],
+    ['Обовязкові платежі', s.mandatory_percent, amount * s.mandatory_percent / 100],
+    ['Прибуток', 100 - s.purchase_percent - s.ads_percent - s.buffer_percent - s.mandatory_percent,
+      amount * (100 - s.purchase_percent - s.ads_percent - s.buffer_percent - s.mandatory_percent) / 100]
+  ];
+  document.getElementById('dist-result').style.display = 'block';
+  document.getElementById('dist-rows').innerHTML = rows.map(r =>
+    `<tr><td>${r[0]}</td><td>${r[1]}%</td><td><b>${fmt(r[2])}</b></td></tr>`
+  ).join('');
+}
+
+// Встановити сьогоднішню дату за замовчуванням
+document.querySelectorAll('input[type=date]').forEach(el => {
+  el.value = new Date().toISOString().split('T')[0];
+});
+
+loadDashboard();
+</script>
+</body>
+</html>
