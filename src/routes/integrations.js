@@ -113,9 +113,11 @@ router.post('/privatbank/sync', auth, async (req, res) => {
     const fmtD = d => `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 
     const url = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=100`;
+    console.log('PrivatBank sync URL:', url);
     const data = await httpsGet(url, { 'token': cleanToken, 'Content-Type': 'application/json', 'User-Agent': 'JewelryCRM/1.0' });
+    console.log('PrivatBank sync response:', JSON.stringify(data).substring(0, 500));
 
-    if (data.status !== 'OK') return res.status(400).json({ error: data.message || 'Помилка API ПриватБанку' });
+    if (data.status !== 'OK') return res.status(400).json({ error: `ПриватБанк: ${data.message || data.errorDescription || JSON.stringify(data).substring(0, 200)}` });
 
     let added = 0;
     for (const tx of (data.data || [])) {
