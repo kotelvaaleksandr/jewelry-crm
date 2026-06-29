@@ -261,16 +261,13 @@
         </div>
         <div id="privat-form">
           <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Token</label>
+          <input type="password" id="privat-token" placeholder="Токен з Приват24 для бізнесу" style="width:100%;margin-bottom:10px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">IBAN рахунку</label>
           <div style="display:flex;gap:8px">
-            <input type="password" id="privat-token" placeholder="Токен з Приват24 для бізнесу" style="flex:1">
-            <button class="btn" onclick="loadPrivatAccounts()">Далі →</button>
+            <input type="text" id="privat-iban" placeholder="UA123456789000000000000000000" style="flex:1">
+            <button class="btn" onclick="savePrivatDirect()">Підключити</button>
           </div>
           <p style="font-size:12px;color:#999;margin-top:6px">Приват24 для бізнесу → Керування застосунками → 🔑 → вкладка «Token»</p>
-          <div id="privat-ip-hint" style="display:none;margin-top:10px;padding:10px;background:#fff8e1;border:1px solid #f59e0b;border-radius:8px;font-size:12px"></div>
-          <div id="privat-accounts" style="display:none;margin-top:14px">
-            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Оберіть рахунок:</label>
-            <div id="privat-accounts-list"></div>
-          </div>
         </div>
         <div id="privat-connected" style="display:none">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -759,53 +756,15 @@ async function syncMonobank() {
   }
 }
 
-async function loadPrivatAccounts() {
+async function savePrivatDirect() {
   const tokenVal = document.getElementById('privat-token').value.trim();
-  if (!tokenVal) return alert('Введіть токен');
-  const btn = event.target;
-  btn.textContent = '...';
-  btn.disabled = true;
-  const res = await api('/integrations/privatbank/accounts', 'POST', { token: tokenVal });
-  btn.textContent = 'Далі →';
-  btn.disabled = false;
-  if (res.error) return alert('Помилка: ' + res.error);
-  document.getElementById('privat-accounts').style.display = 'block';
-  document.getElementById('privat-accounts-list').innerHTML = res.accounts.map(a =>
-    `<div onclick="selectPrivatAccount('${a.id}','${a.name} ${a.currency}', this)" style="padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:8px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-weight:600;font-size:13px">${a.name} · ${a.currency}</div>
-        <div style="font-size:11px;color:#999">${a.iban}</div>
-      </div>
-      <div style="font-weight:700;font-size:14px">${Number(a.balance).toLocaleString('uk-UA')} ${a.currency}</div>
-    </div>`
-  ).join('');
-}
-
-let selectedPrivatAccountId = null;
-
-function selectPrivatAccount(id, name, el) {
-  selectedPrivatAccountId = id;
-  document.querySelectorAll('#privat-accounts-list > div').forEach(d => d.style.border = '1.5px solid #e0e0e0');
-  el.style.border = '2px solid #009900';
-  if (!document.getElementById('privat-save-btn')) {
-    const btn = document.createElement('button');
-    btn.id = 'privat-save-btn';
-    btn.className = 'btn';
-    btn.style = 'margin-top:10px;width:100%;background:#009900';
-    btn.textContent = 'Підключити цей рахунок';
-    btn.onclick = () => savePrivatIntegration(name);
-    document.getElementById('privat-accounts').appendChild(btn);
-  }
-}
-
-async function savePrivatIntegration(accountName) {
-  const tokenVal = document.getElementById('privat-token').value.trim();
-  const res = await api('/integrations/privatbank', 'POST', { token: tokenVal, account_id: selectedPrivatAccountId });
+  const iban = document.getElementById('privat-iban').value.trim();
+  if (!tokenVal || !iban) return alert('Введіть і Token, і IBAN рахунку');
+  const res = await api('/integrations/privatbank', 'POST', { token: tokenVal, account_id: iban });
   if (res && res.id) {
     document.getElementById('privat-form').style.display = 'none';
     document.getElementById('privat-connected').style.display = 'block';
-    document.getElementById('privat-account-name').textContent = '· ' + accountName;
-    document.getElementById('privat-accounts').style.display = 'none';
+    document.getElementById('privat-account-name').textContent = '· ' + iban;
   } else {
     alert('Помилка збереження');
   }
@@ -851,10 +810,7 @@ async function removeIntegration(provider) {
     if (saveBtn) saveBtn.remove();
   }
   if (provider === 'privatbank') {
-    document.getElementById('privat-accounts').style.display = 'none';
-    selectedPrivatAccountId = null;
-    const saveBtn = document.getElementById('privat-save-btn');
-    if (saveBtn) saveBtn.remove();
+    document.getElementById('privat-iban').value = '';
   }
 }
 
