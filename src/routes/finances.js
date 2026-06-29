@@ -138,6 +138,33 @@ router.delete('/expense-categories/:id', auth, async (req, res) => {
   res.json({ success: true });
 });
 
+// Регулярні витрати
+router.get('/regular-expenses', auth, async (req, res) => {
+  const result = await pool.query('SELECT * FROM regular_expenses WHERE user_id=$1 ORDER BY name', [req.userId]);
+  res.json(result.rows);
+});
+router.post('/regular-expenses', auth, async (req, res) => {
+  const { name, amount, period, pay_day, pay_month, pay_date } = req.body;
+  if (!name || !amount || !period) return res.status(400).json({ error: 'Заповніть всі обовязкові поля' });
+  const result = await pool.query(
+    'INSERT INTO regular_expenses (user_id, name, amount, period, pay_day, pay_month, pay_date) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+    [req.userId, name.trim(), amount, period, pay_day || null, pay_month || null, pay_date || null]
+  );
+  res.json(result.rows[0]);
+});
+router.put('/regular-expenses/:id', auth, async (req, res) => {
+  const { name, amount, period, pay_day, pay_month, pay_date } = req.body;
+  await pool.query(
+    'UPDATE regular_expenses SET name=$1, amount=$2, period=$3, pay_day=$4, pay_month=$5, pay_date=$6 WHERE id=$7 AND user_id=$8',
+    [name.trim(), amount, period, pay_day || null, pay_month || null, pay_date || null, req.params.id, req.userId]
+  );
+  res.json({ success: true });
+});
+router.delete('/regular-expenses/:id', auth, async (req, res) => {
+  await pool.query('DELETE FROM regular_expenses WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+  res.json({ success: true });
+});
+
 // Налаштування
 router.get('/settings', auth, async (req, res) => {
   const result = await pool.query('SELECT * FROM settings WHERE user_id = $1', [req.userId]);

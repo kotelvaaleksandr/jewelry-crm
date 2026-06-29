@@ -22,6 +22,17 @@ require('./db').query(`
   );
   UPDATE incomes SET source='Monobank' WHERE bank_tx_id IS NOT NULL AND source IS NULL;
   UPDATE expenses SET source='Monobank' WHERE bank_tx_id IS NOT NULL AND source IS NULL;
+  CREATE TABLE IF NOT EXISTS regular_expenses (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    amount NUMERIC(12,2) NOT NULL,
+    period VARCHAR(20) NOT NULL,
+    pay_day INTEGER,
+    pay_month INTEGER,
+    pay_date DATE,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
 `).catch(e => console.error('Auto-migration error:', e.message));
 
 const app = express();

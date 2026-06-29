@@ -337,6 +337,39 @@
         </div>
       </div>
     </div>
+
+    <!-- Регулярні витрати -->
+    <div class="card" style="margin-top:20px">
+      <h2 style="margin-bottom:16px">Регулярні витрати</h2>
+
+      <!-- Форма додавання -->
+      <div style="background:#f8f9fa;border-radius:10px;padding:16px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:1fr 120px 160px;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Назва</label>
+            <input type="text" id="reg-name" placeholder="Наприклад: Binotel" style="width:100%">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Сума ₴</label>
+            <input type="number" id="reg-amount" placeholder="0.00" style="width:100%">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Періодичність</label>
+            <select id="reg-period" onchange="updateRegPayField()" style="width:100%">
+              <option value="week">Щотижня</option>
+              <option value="month">Щомісяця</option>
+              <option value="quarter">Щокварталу</option>
+              <option value="year">Щороку</option>
+            </select>
+          </div>
+        </div>
+        <div id="reg-pay-field" style="margin-bottom:12px"></div>
+        <button class="btn" onclick="addRegularExpense()">Додати</button>
+      </div>
+
+      <!-- Список -->
+      <div id="regular-expenses-list"></div>
+    </div>
   </div>
 
 </div>
@@ -359,7 +392,7 @@ function showTab(name) {
   if (name === 'incomes') loadIncomeTypes().then(loadIncomes);
   if (name === 'expenses') loadExpenseCategories().then(loadExpenses);
   if (name === 'purchases') loadPurchases();
-  if (name === 'settings') loadIntegrations();
+  if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); }
 }
 
 async function api(path, method = 'GET', body) {
@@ -964,6 +997,113 @@ async function removeIntegration(provider) {
 }
 
 loadDashboard();
+
+// ---- Регулярні витрати ----
+const DAY_NAMES = ['Понеділок','Вівторок','Середа','Четвер','Пятниця','Субота','Неділя'];
+const MONTH_NAMES = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const PERIOD_LABELS = { week:'Щотижня', month:'Щомісяця', quarter:'Щокварталу', year:'Щороку' };
+
+function updateRegPayField(data) {
+  const period = (data && data.period) || document.getElementById('reg-period').value;
+  const el = document.getElementById('reg-pay-field');
+  if (period === 'week') {
+    const opts = DAY_NAMES.map((d,i) => `<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${d}</option>`).join('');
+    el.innerHTML = `<label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">День тижня оплати</label>
+      <select id="reg-pay-day" style="width:200px">${opts}</select>`;
+  } else if (period === 'month') {
+    const days = Array.from({length:31},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
+    el.innerHTML = `<label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Дата оплати (число місяця)</label>
+      <select id="reg-pay-day" style="width:120px">${days}</select>`;
+  } else if (period === 'quarter') {
+    const months = [1,4,7,10].map(m=>`<option value="${m}" ${data&&data.pay_month==m?'selected':''}>${MONTH_NAMES[m-1]}</option>`).join('');
+    const days = Array.from({length:28},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
+    el.innerHTML = `<div style="display:flex;gap:12px;align-items:flex-end">
+      <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Місяць кварталу</label>
+        <select id="reg-pay-month" style="width:150px">${months}</select></div>
+      <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Число місяця</label>
+        <select id="reg-pay-day" style="width:90px">${days}</select></div>
+    </div>`;
+  } else if (period === 'year') {
+    const months = MONTH_NAMES.map((m,i)=>`<option value="${i+1}" ${data&&data.pay_month==i+1?'selected':''}>${m}</option>`).join('');
+    const days = Array.from({length:28},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
+    el.innerHTML = `<div style="display:flex;gap:12px;align-items:flex-end">
+      <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Місяць оплати</label>
+        <select id="reg-pay-month" style="width:150px">${months}</select></div>
+      <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Число місяця</label>
+        <select id="reg-pay-day" style="width:90px">${days}</select></div>
+    </div>`;
+  }
+}
+
+function getRegPayValues() {
+  const period = document.getElementById('reg-period').value;
+  const pay_day = document.getElementById('reg-pay-day') ? +document.getElementById('reg-pay-day').value : null;
+  const pay_month = document.getElementById('reg-pay-month') ? +document.getElementById('reg-pay-month').value : null;
+  return { pay_day, pay_month };
+}
+
+function formatPaySchedule(r) {
+  if (r.period === 'week') return `щотижня у ${DAY_NAMES[(r.pay_day||1)-1]}`;
+  if (r.period === 'month') return `щомісяця ${r.pay_day || 1}-го числа`;
+  if (r.period === 'quarter') return `щокварталу: ${r.pay_day || 1} ${MONTH_NAMES[(r.pay_month||1)-1]}`;
+  if (r.period === 'year') return `щороку: ${r.pay_day || 1} ${MONTH_NAMES[(r.pay_month||1)-1]}`;
+  return '';
+}
+
+async function loadRegularExpenses() {
+  const data = await api('/regular-expenses');
+  const totalMonth = data.reduce((s, r) => {
+    const m = { week: 4.33, month: 1, quarter: 1/3, year: 1/12 }[r.period] || 1;
+    return s + +r.amount * m;
+  }, 0);
+  document.getElementById('regular-expenses-list').innerHTML = data.length === 0
+    ? '<p style="color:#aaa;font-size:13px">Ще немає регулярних витрат</p>'
+    : `<div style="margin-bottom:12px;font-size:13px;color:#666">
+        Приблизно на місяць: <b style="color:#dc2626">${fmt(totalMonth)}</b>
+       </div>
+       <table style="width:100%">
+         <thead><tr>
+           <th style="text-align:left">Назва</th>
+           <th style="text-align:right">Сума</th>
+           <th>Період</th>
+           <th>Графік оплати</th>
+           <th></th>
+         </tr></thead>
+         <tbody>${data.map(r => `
+           <tr>
+             <td style="font-weight:600">${r.name}</td>
+             <td style="text-align:right;color:#dc2626;font-weight:600">${fmt(+r.amount)}</td>
+             <td style="text-align:center"><span style="background:#f3f4f6;border-radius:6px;padding:2px 8px;font-size:12px">${PERIOD_LABELS[r.period]||r.period}</span></td>
+             <td style="font-size:12px;color:#666">${formatPaySchedule(r)}</td>
+             <td style="text-align:right">
+               <button class="btn btn-red" onclick="deleteRegularExpense(${r.id})" style="padding:4px 10px;font-size:12px">✕</button>
+             </td>
+           </tr>`).join('')}
+         </tbody>
+       </table>`;
+}
+
+async function addRegularExpense() {
+  const name = document.getElementById('reg-name').value.trim();
+  const amount = +document.getElementById('reg-amount').value;
+  const period = document.getElementById('reg-period').value;
+  if (!name || !amount) return alert('Введіть назву і суму');
+  const { pay_day, pay_month } = getRegPayValues();
+  const res = await api('/regular-expenses', 'POST', { name, amount, period, pay_day, pay_month });
+  if (res.error) return alert('Помилка: ' + res.error);
+  document.getElementById('reg-name').value = '';
+  document.getElementById('reg-amount').value = '';
+  loadRegularExpenses();
+}
+
+async function deleteRegularExpense(id) {
+  if (!confirm('Видалити цю регулярну витрату?')) return;
+  await api('/regular-expenses/' + id, 'DELETE');
+  loadRegularExpenses();
+}
+
+// Ініціалізація поля при завантаженні
+updateRegPayField();
 </script>
 </body>
 </html>
