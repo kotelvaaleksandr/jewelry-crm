@@ -117,19 +117,18 @@ router.post('/privatbank/sync', auth, async (req, res) => {
     const data = await httpsGet(url, { 'token': cleanToken, 'Content-Type': 'application/json', 'User-Agent': 'JewelryCRM/1.0' });
     console.log('PrivatBank sync response:', JSON.stringify(data).substring(0, 500));
 
-    if (data.status !== 'OK') return res.status(400).json({ error: `ПриватБанк: ${data.message || data.errorDescription || JSON.stringify(data).substring(0, 200)}` });
+    if (data.status !== 'SUCCESS') return res.status(400).json({ error: `ПриватБанк: ${data.message || data.errorDescription || JSON.stringify(data).substring(0, 200)}` });
 
     let added = 0;
-    for (const tx of (data.data || [])) {
-      const amount = parseFloat(tx.BPL_SUM || 0);
-      const isIncome = tx.BPL_DEBET_CREDIT === 'C';
-      const dateParts = (tx.BPL_DAT_OD || '').split('-');
-      const txDate = dateParts.length === 3
-        ? new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${tx.BPL_TIME || '00:00:00'}`)
-        : new Date();
+    for (const tx of (data.transactions || [])) {
+      const amount = parseFloat(tx.SUM || tx.AUT_MY_SUM || 0);
+      // TRANTYPE: "Д" = debit (витрата), "К" = credit (дохід)
+      const isIncome = tx.TRANTYPE === 'К' || tx.TRANTYPE === 'C' || tx.TRANTYPE === 'Credit';
+      const dtStr = tx.DATE_TIME_DAT_OD_TIM_P || tx.AUT_DAT_OD || '';
+      const txDate = dtStr ? new Date(dtStr.replace(/(\d{2})-(\d{2})-(\d{4})/, '$3-$2-$1')) : new Date();
       const date = txDate.toISOString().split('T')[0];
-      const description = tx.BPL_OSND || '';
-      const txId = 'privat_' + (tx.BPL_NUM_DOC || tx.BPL_DAT_OD + '_' + amount);
+      const description = tx.OSND || tx.AUT_OSND || tx.AUT_CNTR_NAM || '';
+      const txId = 'privat_' + (tx.AUT_MY_CRF || tx.REF || (date + '_' + amount));
 
       if (isIncome) {
         await pool.query(
