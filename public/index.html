@@ -93,6 +93,27 @@
       </form>
     </div>
     <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Від</label>
+          <input type="date" id="i-filter-from" oninput="loadIncomes()" style="width:140px">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">До</label>
+          <input type="date" id="i-filter-to" oninput="loadIncomes()" style="width:140px">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Тип</label>
+          <select id="i-filter-type" onchange="loadIncomes()" style="width:160px">
+            <option value="">Всі</option>
+            <option value="Накладений платіж">Накладений платіж</option>
+            <option value="Розрахунковий рахунок">Розрахунковий рахунок</option>
+            <option value="Карта">Карта</option>
+            <option value="Monobank">Monobank</option>
+          </select>
+        </div>
+        <button class="btn" onclick="clearFilters('i')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
+      </div>
       <table><thead><tr><th>Дата</th><th>Тип</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
       <tbody id="incomes-list"></tbody></table>
     </div>
@@ -121,6 +142,33 @@
       </form>
     </div>
     <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Від</label>
+          <input type="date" id="e-filter-from" oninput="loadExpenses()" style="width:140px">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">До</label>
+          <input type="date" id="e-filter-to" oninput="loadExpenses()" style="width:140px">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Категорія</label>
+          <select id="e-filter-cat" onchange="loadExpenses()" style="width:160px">
+            <option value="">Всі</option>
+            <option value="Некласифіковано">Некласифіковано</option>
+            <option value="Закупівля">Закупівля</option>
+            <option value="Реклама">Реклама</option>
+            <option value="Binotel">Binotel</option>
+            <option value="Сайт">Сайт</option>
+            <option value="Пакування">Пакування</option>
+            <option value="Доставка">Доставка</option>
+            <option value="Податки">Податки</option>
+            <option value="Зарплата">Зарплата</option>
+            <option value="Інше">Інше</option>
+          </select>
+        </div>
+        <button class="btn" onclick="clearFilters('e')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
+      </div>
       <table><thead><tr><th>Дата</th><th>Категорія</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
       <tbody id="expenses-list"></tbody></table>
     </div>
@@ -322,12 +370,44 @@ async function loadDashboard() {
   ).join('');
 }
 
+const INCOME_TYPES = ['Накладений платіж','Розрахунковий рахунок','Карта','Monobank'];
+const EXPENSE_CATS = ['Некласифіковано','Закупівля','Реклама','Binotel','Сайт','Пакування','Доставка','Податки','Зарплата','Інше'];
+
+function clearFilters(prefix) {
+  const from = document.getElementById(prefix+'-filter-from');
+  const to = document.getElementById(prefix+'-filter-to');
+  if (from) from.value = '';
+  if (to) to.value = '';
+  const type = document.getElementById(prefix+'-filter-type');
+  const cat = document.getElementById(prefix+'-filter-cat');
+  if (type) type.value = '';
+  if (cat) cat.value = '';
+  if (prefix === 'i') loadIncomes();
+  else loadExpenses();
+}
+
 async function loadIncomes() {
-  const data = await api('/incomes');
+  const from = document.getElementById('i-filter-from')?.value || '';
+  const to = document.getElementById('i-filter-to')?.value || '';
+  const type = document.getElementById('i-filter-type')?.value || '';
+  let data = await api('/incomes');
+  if (from) data = data.filter(r => r.date >= from);
+  if (to) data = data.filter(r => r.date <= to);
+  if (type) data = data.filter(r => r.type === type);
+  const typeOpts = INCOME_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
   document.getElementById('incomes-list').innerHTML = data.map(r =>
-    `<tr><td>${fmtDate(r.date)}</td><td>${r.type}</td><td class="green">${fmt(r.amount)}</td>
-     <td>${r.description||''}</td><td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`
+    `<tr><td>${fmtDate(r.date)}</td>
+     <td><select onchange="updateIncome(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
+       ${INCOME_TYPES.map(t=>`<option${t===r.type?' selected':''}>${t}</option>`).join('')}
+     </select></td>
+     <td class="green">${fmt(r.amount)}</td>
+     <td>${r.description||''}</td>
+     <td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`
   ).join('');
+}
+
+async function updateIncome(id, type) {
+  await api('/incomes/' + id, 'PUT', { type });
 }
 
 async function addIncome(e) {
@@ -348,11 +428,26 @@ async function deleteIncome(id) {
 }
 
 async function loadExpenses() {
-  const data = await api('/expenses');
+  const from = document.getElementById('e-filter-from')?.value || '';
+  const to = document.getElementById('e-filter-to')?.value || '';
+  const cat = document.getElementById('e-filter-cat')?.value || '';
+  let data = await api('/expenses');
+  if (from) data = data.filter(r => r.date >= from);
+  if (to) data = data.filter(r => r.date <= to);
+  if (cat) data = data.filter(r => r.category === cat);
   document.getElementById('expenses-list').innerHTML = data.map(r =>
-    `<tr><td>${fmtDate(r.date)}</td><td>${r.category}</td><td class="red">${fmt(r.amount)}</td>
-     <td>${r.description||''}</td><td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`
+    `<tr><td>${fmtDate(r.date)}</td>
+     <td><select onchange="updateExpense(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
+       ${EXPENSE_CATS.map(c=>`<option${c===r.category?' selected':''}>${c}</option>`).join('')}
+     </select></td>
+     <td class="red">${fmt(r.amount)}</td>
+     <td>${r.description||''}</td>
+     <td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`
   ).join('');
+}
+
+async function updateExpense(id, category) {
+  await api('/expenses/' + id, 'PUT', { category });
 }
 
 async function addExpense(e) {

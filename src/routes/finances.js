@@ -19,6 +19,12 @@ router.post('/incomes', auth, async (req, res) => {
   res.json(result.rows[0]);
 });
 
+router.put('/incomes/:id', auth, async (req, res) => {
+  const { type } = req.body;
+  await pool.query('UPDATE incomes SET type=$1 WHERE id=$2 AND user_id=$3', [type, req.params.id, req.userId]);
+  res.json({ success: true });
+});
+
 router.delete('/incomes/:id', auth, async (req, res) => {
   await pool.query('DELETE FROM incomes WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
   res.json({ success: true });
@@ -37,6 +43,12 @@ router.post('/expenses', auth, async (req, res) => {
     [req.userId, amount, category, description, date]
   );
   res.json(result.rows[0]);
+});
+
+router.put('/expenses/:id', auth, async (req, res) => {
+  const { category } = req.body;
+  await pool.query('UPDATE expenses SET category=$1 WHERE id=$2 AND user_id=$3', [category, req.params.id, req.userId]);
+  res.json({ success: true });
 });
 
 router.delete('/expenses/:id', auth, async (req, res) => {
