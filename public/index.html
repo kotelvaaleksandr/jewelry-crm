@@ -1015,7 +1015,7 @@ function updateRegPayField(data) {
     el.innerHTML = `<label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Дата оплати (число місяця)</label>
       <select id="reg-pay-day" style="width:120px">${days}</select>`;
   } else if (period === 'quarter') {
-    const months = [1,4,7,10].map(m=>`<option value="${m}" ${data&&data.pay_month==m?'selected':''}>${MONTH_NAMES[m-1]}</option>`).join('');
+    const months = [3,6,9,12].map(m=>`<option value="${m}" ${data&&data.pay_month==m?'selected':''}>${MONTH_NAMES[m-1]}</option>`).join('');
     const days = Array.from({length:28},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
     el.innerHTML = `<div style="display:flex;gap:12px;align-items:flex-end">
       <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Місяць кварталу</label>
