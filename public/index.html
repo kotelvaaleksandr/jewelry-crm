@@ -560,6 +560,7 @@ async function loadDashboard() {
 
 let incomeTypes = [];
 let expenseCategories = [];
+let allExpenseOptions = ''; // merged: категорії + регулярні витрати
 
 async function loadIncomeTypes() {
   incomeTypes = await api('/income-types');
@@ -584,17 +585,18 @@ async function loadExpenseCategories() {
   // Додаємо назви регулярних витрат яких ще немає серед категорій
   const catNames = new Set(expenseCategories.map(c => c.name));
   const regNames = regList.map(r => r.name).filter(n => n && !catNames.has(n));
-  const allOptions = expenseCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('') +
-    (regNames.length ? '<optgroup label="— Регулярні витрати —">' + regNames.map(n => `<option value="${n}">${n}</option>`).join('') + '</optgroup>' : '');
+  window._regExpNames = regNames;
+  allExpenseOptions = expenseCategories.map(c => '<option value="' + c.name + '">' + c.name + '</option>').join('') +
+    (regNames.length ? '<optgroup label="Регулярні витрати">' + regNames.map(n => '<option value="' + n + '">' + n + '</option>').join('') + '</optgroup>' : '');
 
   const filterSel = document.getElementById('e-filter-cat');
   const cur = filterSel.value;
-  filterSel.innerHTML = '<option value="">Всі</option>' + allOptions;
+  filterSel.innerHTML = '<option value="">Всі</option>' + allExpenseOptions;
   filterSel.value = cur;
   const addSel = document.getElementById('e-cat');
   if (addSel) {
     const cur2 = addSel.value;
-    addSel.innerHTML = allOptions;
+    addSel.innerHTML = allExpenseOptions;
     addSel.value = cur2;
   }
   renderTypeManagerList('expense');
@@ -759,7 +761,7 @@ async function loadExpenses() {
   document.getElementById('expenses-list').innerHTML = data.map(r =>
     `<tr><td style="white-space:nowrap">${fmtDateTime(r)}</td>
      <td><select onchange="updateExpense(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
-       ${expenseCategories.map(c=>`<option${c.name===r.category?' selected':''}>${c.name}</option>`).join('')}
+       ${(expenseCategories.map(c=>c.name).concat(Array.isArray(window._regExpNames)?window._regExpNames:[])).map(n=>'<option'+(n===r.category?' selected':'')+'>'+n+'</option>').join('')}
      </select></td>
      <td style="font-size:12px;color:#888">${r.source||''}</td>
      <td class="red">${fmt(r.amount)}</td>
