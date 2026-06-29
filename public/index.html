@@ -82,18 +82,14 @@
       <h2>Додати дохід</h2>
       <form onsubmit="addIncome(event)">
         <input type="number" id="i-amount" placeholder="Сума ₴" required style="width:120px">
-        <select id="i-type">
-          <option value="Накладений платіж">Накладений платіж</option>
-          <option value="Розрахунковий рахунок">Розрахунковий рахунок</option>
-          <option value="Карта">Карта</option>
-        </select>
+        <select id="i-type"></select>
         <input type="text" id="i-desc" placeholder="Опис" style="width:180px">
         <input type="date" id="i-date" required>
         <button class="btn" type="submit">Додати</button>
       </form>
     </div>
     <div class="card">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
         <div>
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Від</label>
           <input type="date" id="i-filter-from" oninput="loadIncomes()" style="width:140px">
@@ -106,15 +102,20 @@
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Тип</label>
           <select id="i-filter-type" onchange="loadIncomes()" style="width:160px">
             <option value="">Всі</option>
-            <option value="Накладений платіж">Накладений платіж</option>
-            <option value="Розрахунковий рахунок">Розрахунковий рахунок</option>
-            <option value="Карта">Карта</option>
-            <option value="Monobank">Monobank</option>
           </select>
         </div>
         <button class="btn" onclick="clearFilters('i')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
+        <button class="btn" onclick="toggleTypeManager('income')" style="background:#6366f1;padding:8px 14px;font-size:12px">⚙ Типи</button>
       </div>
-      <table><thead><tr><th>Дата</th><th>Тип</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
+      <div id="income-type-manager" style="display:none;border:1.5px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:14px;background:#f8f8f8">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#444">Управління типами доходів</div>
+        <div id="income-type-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <input id="new-income-type-input" placeholder="Новий тип..." style="flex:1;max-width:220px;font-size:13px;padding:6px 10px">
+          <button class="btn" onclick="addIncomeType()" style="padding:6px 14px;font-size:12px">+ Додати</button>
+        </div>
+      </div>
+      <table><thead><tr><th>Дата</th><th>Тип</th><th>Джерело</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
       <tbody id="incomes-list"></tbody></table>
     </div>
   </div>
@@ -125,24 +126,14 @@
       <h2>Додати витрату</h2>
       <form onsubmit="addExpense(event)">
         <input type="number" id="e-amount" placeholder="Сума ₴" required style="width:120px">
-        <select id="e-cat">
-          <option value="Закупівля">Закупівля</option>
-          <option value="Реклама">Реклама</option>
-          <option value="Binotel">Binotel</option>
-          <option value="Сайт">Сайт</option>
-          <option value="Пакування">Пакування</option>
-          <option value="Доставка">Доставка</option>
-          <option value="Податки">Податки</option>
-          <option value="Зарплата">Зарплата</option>
-          <option value="Інше">Інше</option>
-        </select>
+        <select id="e-cat"></select>
         <input type="text" id="e-desc" placeholder="Опис" style="width:180px">
         <input type="date" id="e-date" required>
         <button class="btn" type="submit">Додати</button>
       </form>
     </div>
     <div class="card">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
         <div>
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Від</label>
           <input type="date" id="e-filter-from" oninput="loadExpenses()" style="width:140px">
@@ -155,21 +146,20 @@
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Категорія</label>
           <select id="e-filter-cat" onchange="loadExpenses()" style="width:160px">
             <option value="">Всі</option>
-            <option value="Некласифіковано">Некласифіковано</option>
-            <option value="Закупівля">Закупівля</option>
-            <option value="Реклама">Реклама</option>
-            <option value="Binotel">Binotel</option>
-            <option value="Сайт">Сайт</option>
-            <option value="Пакування">Пакування</option>
-            <option value="Доставка">Доставка</option>
-            <option value="Податки">Податки</option>
-            <option value="Зарплата">Зарплата</option>
-            <option value="Інше">Інше</option>
           </select>
         </div>
         <button class="btn" onclick="clearFilters('e')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
+        <button class="btn" onclick="toggleTypeManager('expense')" style="background:#6366f1;padding:8px 14px;font-size:12px">⚙ Категорії</button>
       </div>
-      <table><thead><tr><th>Дата</th><th>Категорія</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
+      <div id="expense-type-manager" style="display:none;border:1.5px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:14px;background:#f8f8f8">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#444">Управління категоріями витрат</div>
+        <div id="expense-type-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <input id="new-expense-cat-input" placeholder="Нова категорія..." style="flex:1;max-width:220px;font-size:13px;padding:6px 10px">
+          <button class="btn" onclick="addExpenseCategory()" style="padding:6px 14px;font-size:12px">+ Додати</button>
+        </div>
+      </div>
+      <table><thead><tr><th>Дата</th><th>Категорія</th><th>Джерело</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
       <tbody id="expenses-list"></tbody></table>
     </div>
   </div>
@@ -328,8 +318,8 @@ function showTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   event.target.classList.add('active');
   if (name === 'dashboard') loadDashboard();
-  if (name === 'incomes') loadIncomes();
-  if (name === 'expenses') loadExpenses();
+  if (name === 'incomes') loadIncomeTypes().then(loadIncomes);
+  if (name === 'expenses') loadExpenseCategories().then(loadExpenses);
   if (name === 'purchases') loadPurchases();
   if (name === 'settings') loadIntegrations();
 }
@@ -370,8 +360,108 @@ async function loadDashboard() {
   ).join('');
 }
 
-const INCOME_TYPES = ['Накладений платіж','Розрахунковий рахунок','Карта','Monobank'];
-const EXPENSE_CATS = ['Некласифіковано','Закупівля','Реклама','Binotel','Сайт','Пакування','Доставка','Податки','Зарплата','Інше'];
+let incomeTypes = [];
+let expenseCategories = [];
+
+async function loadIncomeTypes() {
+  incomeTypes = await api('/income-types');
+  const filterSel = document.getElementById('i-filter-type');
+  const cur = filterSel.value;
+  filterSel.innerHTML = '<option value="">Всі</option>' +
+    incomeTypes.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+  filterSel.value = cur;
+  const addSel = document.getElementById('i-type');
+  if (addSel) {
+    const cur2 = addSel.value;
+    addSel.innerHTML = incomeTypes.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+    addSel.value = cur2;
+  }
+  renderTypeManagerList('income');
+}
+
+async function loadExpenseCategories() {
+  expenseCategories = await api('/expense-categories');
+  const filterSel = document.getElementById('e-filter-cat');
+  const cur = filterSel.value;
+  filterSel.innerHTML = '<option value="">Всі</option>' +
+    expenseCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  filterSel.value = cur;
+  const addSel = document.getElementById('e-cat');
+  if (addSel) {
+    const cur2 = addSel.value;
+    addSel.innerHTML = expenseCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    addSel.value = cur2;
+  }
+  renderTypeManagerList('expense');
+}
+
+function renderTypeManagerList(kind) {
+  const items = kind === 'income' ? incomeTypes : expenseCategories;
+  const container = document.getElementById(kind + '-type-list');
+  if (!container) return;
+  container.innerHTML = items.map(t =>
+    `<div style="display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 8px">
+      <span id="${kind}-type-name-${t.id}" ondblclick="startRenameType('${kind}',${t.id})" style="font-size:13px;cursor:pointer;min-width:60px" title="Двічі клікни щоб перейменувати">${t.name}</span>
+      <button onclick="deleteTypeItem('${kind}',${t.id})" style="border:none;background:none;color:#dc2626;cursor:pointer;font-size:14px;padding:0 2px" title="Видалити">✕</button>
+    </div>`
+  ).join('');
+}
+
+function toggleTypeManager(kind) {
+  const el = document.getElementById(kind + '-type-manager');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function startRenameType(kind, id) {
+  const span = document.getElementById(kind + '-type-name-' + id);
+  const old = span.textContent;
+  span.innerHTML = `<input value="${old}" id="rename-${kind}-${id}" style="border:1px solid #6366f1;border-radius:4px;padding:2px 6px;font-size:12px;width:120px"
+    onkeydown="if(event.key==='Enter')commitRename('${kind}',${id}); if(event.key==='Escape')cancelRename('${kind}',${id},'${old}')">`;
+  document.getElementById(`rename-${kind}-${id}`).focus();
+}
+
+async function commitRename(kind, id) {
+  const input = document.getElementById(`rename-${kind}-${id}`);
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) return;
+  const endpoint = kind === 'income' ? `/income-types/${id}` : `/expense-categories/${id}`;
+  await api(endpoint, 'PUT', { name });
+  if (kind === 'income') { await loadIncomeTypes(); loadIncomes(); }
+  else { await loadExpenseCategories(); loadExpenses(); }
+}
+
+function cancelRename(kind, id, old) {
+  const span = document.getElementById(kind + '-type-name-' + id);
+  if (span) span.innerHTML = old;
+}
+
+async function addIncomeType() {
+  const input = document.getElementById('new-income-type-input');
+  const name = input.value.trim();
+  if (!name) return;
+  await api('/income-types', 'POST', { name });
+  input.value = '';
+  await loadIncomeTypes();
+  loadIncomes();
+}
+
+async function deleteTypeItem(kind, id) {
+  const endpoint = kind === 'income' ? `/income-types/${id}` : `/expense-categories/${id}`;
+  await api(endpoint, 'DELETE');
+  if (kind === 'income') { await loadIncomeTypes(); loadIncomes(); }
+  else { await loadExpenseCategories(); loadExpenses(); }
+}
+
+async function addExpenseCategory() {
+  const input = document.getElementById('new-expense-cat-input');
+  const name = input.value.trim();
+  if (!name) return;
+  await api('/expense-categories', 'POST', { name });
+  input.value = '';
+  await loadExpenseCategories();
+  loadExpenses();
+}
 
 function clearFilters(prefix) {
   const from = document.getElementById(prefix+'-filter-from');
@@ -394,12 +484,12 @@ async function loadIncomes() {
   if (from) data = data.filter(r => r.date >= from);
   if (to) data = data.filter(r => r.date <= to);
   if (type) data = data.filter(r => r.type === type);
-  const typeOpts = INCOME_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
   document.getElementById('incomes-list').innerHTML = data.map(r =>
     `<tr><td>${fmtDate(r.date)}</td>
      <td><select onchange="updateIncome(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
-       ${INCOME_TYPES.map(t=>`<option${t===r.type?' selected':''}>${t}</option>`).join('')}
+       ${incomeTypes.map(t=>`<option${t.name===r.type?' selected':''}>${t.name}</option>`).join('')}
      </select></td>
+     <td style="font-size:12px;color:#888">${r.source||''}</td>
      <td class="green">${fmt(r.amount)}</td>
      <td>${r.description||''}</td>
      <td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`
@@ -438,8 +528,9 @@ async function loadExpenses() {
   document.getElementById('expenses-list').innerHTML = data.map(r =>
     `<tr><td>${fmtDate(r.date)}</td>
      <td><select onchange="updateExpense(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
-       ${EXPENSE_CATS.map(c=>`<option${c===r.category?' selected':''}>${c}</option>`).join('')}
+       ${expenseCategories.map(c=>`<option${c.name===r.category?' selected':''}>${c.name}</option>`).join('')}
      </select></td>
+     <td style="font-size:12px;color:#888">${r.source||''}</td>
      <td class="red">${fmt(r.amount)}</td>
      <td>${r.description||''}</td>
      <td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`

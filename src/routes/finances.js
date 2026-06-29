@@ -76,6 +76,62 @@ router.delete('/purchases/:id', auth, async (req, res) => {
   res.json({ success: true });
 });
 
+// Типи доходів
+const DEFAULT_INCOME_TYPES = ['Накладений платіж','Розрахунковий рахунок','Карта','Готівка','Інше'];
+router.get('/income-types', auth, async (req, res) => {
+  let result = await pool.query('SELECT * FROM income_types WHERE user_id=$1 ORDER BY name', [req.userId]);
+  if (!result.rows.length) {
+    for (const name of DEFAULT_INCOME_TYPES) {
+      await pool.query('INSERT INTO income_types (user_id, name) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.userId, name]);
+    }
+    result = await pool.query('SELECT * FROM income_types WHERE user_id=$1 ORDER BY name', [req.userId]);
+  }
+  res.json(result.rows);
+});
+router.post('/income-types', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Назва обовязкова' });
+  const result = await pool.query('INSERT INTO income_types (user_id, name) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING *', [req.userId, name.trim()]);
+  res.json(result.rows[0] || { error: 'exists' });
+});
+router.put('/income-types/:id', auth, async (req, res) => {
+  const { name } = req.body;
+  await pool.query('UPDATE income_types SET name=$1 WHERE id=$2 AND user_id=$3', [name.trim(), req.params.id, req.userId]);
+  res.json({ success: true });
+});
+router.delete('/income-types/:id', auth, async (req, res) => {
+  await pool.query('DELETE FROM income_types WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+  res.json({ success: true });
+});
+
+// Категорії витрат
+const DEFAULT_EXPENSE_CATS = ['Некласифіковано','Закупівля','Реклама','Binotel','Сайт','Пакування','Доставка','Податки','Зарплата','Інше'];
+router.get('/expense-categories', auth, async (req, res) => {
+  let result = await pool.query('SELECT * FROM expense_categories WHERE user_id=$1 ORDER BY name', [req.userId]);
+  if (!result.rows.length) {
+    for (const name of DEFAULT_EXPENSE_CATS) {
+      await pool.query('INSERT INTO expense_categories (user_id, name) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.userId, name]);
+    }
+    result = await pool.query('SELECT * FROM expense_categories WHERE user_id=$1 ORDER BY name', [req.userId]);
+  }
+  res.json(result.rows);
+});
+router.post('/expense-categories', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Назва обовязкова' });
+  const result = await pool.query('INSERT INTO expense_categories (user_id, name) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING *', [req.userId, name.trim()]);
+  res.json(result.rows[0] || { error: 'exists' });
+});
+router.put('/expense-categories/:id', auth, async (req, res) => {
+  const { name } = req.body;
+  await pool.query('UPDATE expense_categories SET name=$1 WHERE id=$2 AND user_id=$3', [name.trim(), req.params.id, req.userId]);
+  res.json({ success: true });
+});
+router.delete('/expense-categories/:id', auth, async (req, res) => {
+  await pool.query('DELETE FROM expense_categories WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+  res.json({ success: true });
+});
+
 // Налаштування
 router.get('/settings', auth, async (req, res) => {
   const result = await pool.query('SELECT * FROM settings WHERE user_id = $1', [req.userId]);

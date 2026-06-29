@@ -90,15 +90,15 @@ router.post('/monobank/sync', auth, async (req, res) => {
       const description = tx.description || '';
       if (amount > 0) {
         await pool.query(
-          `INSERT INTO incomes (user_id, amount, type, description, date, bank_tx_id)
-           VALUES ($1,$2,'Monobank',$3,$4,$5)
+          `INSERT INTO incomes (user_id, amount, type, source, description, date, bank_tx_id)
+           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
           [req.userId, amount, description, date, tx.id]
         );
       } else {
         await pool.query(
-          `INSERT INTO expenses (user_id, amount, category, description, date, bank_tx_id)
-           VALUES ($1,$2,'Некласифіковано',$3,$4,$5)
+          `INSERT INTO expenses (user_id, amount, category, source, description, date, bank_tx_id)
+           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
           [req.userId, Math.abs(amount), description, date, tx.id]
         );
