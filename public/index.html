@@ -568,6 +568,7 @@ async function loadDashboard() {
             <div style="font-size:13px;font-weight:700;color:#333">${r.name}</div>
             <div style="font-size:15px;font-weight:700;color:${fg};margin-top:2px">${fmt(+r.amount)}</div>
             <div style="font-size:11px;color:${fg};margin-top:2px">${paid ? '✓ Оплачено' : '✕ Не оплачено'}</div>
+            <div style="font-size:11px;color:#888;margin-top:4px">📅 ${fmtDeadline(r)}</div>
           </div>`;
         }).join('');
   }
@@ -1092,6 +1093,48 @@ function getRegPayValues() {
   const pay_day = document.getElementById('reg-pay-day') ? +document.getElementById('reg-pay-day').value : null;
   const pay_month = document.getElementById('reg-pay-month') ? +document.getElementById('reg-pay-month').value : null;
   return { pay_day, pay_month };
+}
+
+function getNextPayDate(r) {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  if (r.period === 'month') {
+    return new Date(y, m - 1, r.pay_day || 1);
+  }
+  if (r.period === 'week') {
+    const today = now.getDay() === 0 ? 7 : now.getDay(); // пн=1..нд=7
+    const target = r.pay_day || 1;
+    const diff = (target - today + 7) % 7;
+    const d = new Date(now);
+    d.setDate(now.getDate() + diff);
+    return d;
+  }
+  if (r.period === 'quarter') {
+    // Місяці кварталу: 3,6,9,12 — беремо найближчий
+    const qMonths = [3, 6, 9, 12];
+    const payM = qMonths.find(qm => qm >= m) || 3;
+    return new Date(y + (payM < m ? 1 : 0), payM - 1, r.pay_day || 1);
+  }
+  if (r.period === 'year') {
+    const payM = r.pay_month || 1;
+    const d = new Date(y, payM - 1, r.pay_day || 1);
+    if (d < now) d.setFullYear(y + 1);
+    return d;
+  }
+  return null;
+}
+
+function fmtDeadline(r) {
+  const d = getNextPayDate(r);
+  if (!d) return '';
+  const now = new Date();
+  const diffMs = d - now;
+  const diffDays = Math.ceil(diffMs / 86400000);
+  const dateStr = d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+  if (diffDays < 0) return `${dateStr} (прострочено)`;
+  if (diffDays === 0) return `${dateStr} (сьогодні)`;
+  if (diffDays <= 3) return `${dateStr} (через ${diffDays} дн.)`;
+  return dateStr;
 }
 
 function formatPaySchedule(r) {
