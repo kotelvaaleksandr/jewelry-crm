@@ -70,16 +70,19 @@ router.post('/:provider', auth, async (req, res) => {
 router.post('/privatbank/accounts', auth, async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Токен відсутній' });
+  // Видаляємо пробіли та переноси рядків з токену
+  const cleanToken = token.replace(/\s+/g, '');
   try {
     const data = await httpsGet('https://acp.privatbank.ua/api/statements/accounts', {
-      'token': token,
+      'token': cleanToken,
       'Content-Type': 'application/json',
       'User-Agent': 'JewelryCRM/1.0'
     });
-    console.log('PrivatBank accounts response:', JSON.stringify(data));
+    console.log('PrivatBank accounts response:', JSON.stringify(data).substring(0, 300));
     if (data.status !== 'OK') {
       return res.status(400).json({
-        error: `ПриватБанк: ${data.message || data.status || 'Невідома помилка'}. Перевірте що в Приват24 для бізнесу активований API доступ (Налаштування → API → Активувати).`
+        error: `ПриватБанк API: ${data.message || data.status || JSON.stringify(data)}`,
+        hint: 'Переконайтесь що скопіювали повний токен без зайвих символів. Також перевірте вкладку "ID і Token" — можливо потрібен інший формат.'
       });
     }
     const accounts = (data.data || []).map(a => ({
