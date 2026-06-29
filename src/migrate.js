@@ -49,6 +49,18 @@ const sql = `
     mandatory_percent INTEGER DEFAULT 10,
     created_at TIMESTAMP DEFAULT NOW()
   );
+
+  CREATE TABLE IF NOT EXISTS integrations (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL,
+    token TEXT,
+    account_id VARCHAR(255),
+    enabled BOOLEAN DEFAULT false,
+    last_sync TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, provider)
+  );
 `;
 
 pool.query(sql)

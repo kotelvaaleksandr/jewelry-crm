@@ -12,6 +12,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/finances'));
+app.use('/api/integrations', require('./routes/integrations'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Jewelry CRM працює' });
