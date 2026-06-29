@@ -568,7 +568,7 @@ async function loadDashboard() {
             <div style="font-size:13px;font-weight:700;color:#333">${r.name}</div>
             <div style="font-size:15px;font-weight:700;color:${fg};margin-top:2px">${fmt(+r.amount)}</div>
             <div style="font-size:11px;color:${fg};margin-top:2px">${paid ? '✓ Оплачено' : '✕ Не оплачено'}</div>
-            <div style="font-size:11px;color:#888;margin-top:4px">📅 ${fmtDeadline(r)}</div>
+            <div style="font-size:11px;color:#888;margin-top:4px">📅 ${fmtDeadline(r, paid)}</div>
           </div>`;
         }).join('');
   }
@@ -1124,13 +1124,13 @@ function getNextPayDate(r) {
   return null;
 }
 
-function fmtDeadline(r) {
+function fmtDeadline(r, paid) {
   const d = getNextPayDate(r);
   if (!d) return '';
-  const now = new Date();
-  const diffMs = d - now;
-  const diffDays = Math.ceil(diffMs / 86400000);
   const dateStr = d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+  if (paid) return dateStr;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const diffDays = Math.ceil((d - now) / 86400000);
   if (diffDays < 0) return `${dateStr} (прострочено)`;
   if (diffDays === 0) return `${dateStr} (сьогодні)`;
   if (diffDays <= 3) return `${dateStr} (через ${diffDays} дн.)`;
