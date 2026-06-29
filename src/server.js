@@ -39,6 +39,15 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Jewelry CRM працює' });
 });
 
+app.get('/api/server-ip', require('./middleware/auth'), (req, res) => {
+  const https = require('https');
+  https.get('https://api.ipify.org?format=json', r => {
+    let d = '';
+    r.on('data', c => d += c);
+    r.on('end', () => res.json(JSON.parse(d)));
+  }).on('error', e => res.json({ error: e.message }));
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Сервер запущено на порту ${PORT}`);
 });
