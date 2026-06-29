@@ -74,20 +74,17 @@ router.post('/privatbank/accounts', auth, async (req, res) => {
   try {
     const data = await httpsGet('https://acp.privatbank.ua/api/statements/accounts', {
       'token': cleanToken,
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json;charset=utf-8',
       'User-Agent': 'JewelryCRM/1.0'
     });
     console.log('PrivatBank accounts response:', JSON.stringify(data).substring(0, 300));
-    if (data.status !== 'OK') {
-      return res.status(400).json({
-        error: `ПриватБанк API: ${data.message || data.status || JSON.stringify(data)}`,
-        hint: 'Переконайтесь що скопіювали повний токен без зайвих символів. Також перевірте вкладку "ID і Token" — можливо потрібен інший формат.'
-      });
+    if (data.status !== 'SUCCESS') {
+      return res.status(400).json({ error: `ПриватБанк API: ${data.message || data.status || JSON.stringify(data).substring(0, 200)}` });
     }
-    const accounts = (data.data || []).map(a => ({
+    const accounts = (data.accounts || data.data || []).map(a => ({
       id: a.acc,
       iban: a.acc,
-      currency: a.currency,
+      currency: a.currency || 'UAH',
       balance: a.balance,
       name: a.name || a.acc
     }));
