@@ -20,6 +20,8 @@ require('./db').query(`
     name VARCHAR(100) NOT NULL,
     UNIQUE(user_id, name)
   );
+  UPDATE incomes SET source='Monobank' WHERE bank_tx_id IS NOT NULL AND source IS NULL;
+  UPDATE expenses SET source='Monobank' WHERE bank_tx_id IS NOT NULL AND source IS NULL;
 `).catch(e => console.error('Auto-migration error:', e.message));
 
 const app = express();
