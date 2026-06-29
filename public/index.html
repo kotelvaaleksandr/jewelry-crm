@@ -48,6 +48,7 @@
   <h1>Jewelry CRM</h1>
   <div style="display:flex;align-items:center;gap:12px">
     <span id="userName"></span>
+    <button id="sync-all-btn" onclick="syncAllBanks()" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.5);color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">↻ Синхронізація</button>
     <button class="logout" onclick="logout()">Вийти</button>
   </div>
 </div>
@@ -388,6 +389,29 @@ const user = JSON.parse(localStorage.getItem('user') || '{}');
 document.getElementById('userName').textContent = user.company_name || user.email || '';
 
 function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+async function syncAllBanks() {
+  const btn = document.getElementById('sync-all-btn');
+  btn.textContent = '↻ Синхронізація...';
+  btn.disabled = true;
+  const integrations = await api('/integrations');
+  const active = (integrations || []).filter(r => r.enabled);
+  if (!active.length) {
+    btn.textContent = '↻ Синхронізація';
+    btn.disabled = false;
+    return alert('Немає підключених рахунків');
+  }
+  const results = [];
+  for (const int of active) {
+    const res = await api(`/integrations/${int.provider}/sync`, 'POST');
+    if (res.error) results.push(`${int.provider}: помилка`);
+    else results.push(`${int.provider}: +${res.synced} транзакцій`);
+  }
+  btn.textContent = '↻ Синхронізація';
+  btn.disabled = false;
+  alert('Готово!\n' + results.join('\n'));
+  loadDashboard();
+}
 
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
