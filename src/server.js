@@ -39,7 +39,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Jewelry CRM працює' });
 });
 
-app.get('/api/server-ip', require('./middleware/auth'), (req, res) => {
+app.get('/api/server-ip', (req, res) => {
   const https = require('https');
   https.get('https://api.ipify.org?format=json', r => {
     let d = '';
