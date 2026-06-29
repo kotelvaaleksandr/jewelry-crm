@@ -112,37 +112,42 @@ router.post('/privatbank/sync', auth, async (req, res) => {
     const from = new Date(now - 30 * 24 * 60 * 60 * 1000);
     const fmtD = d => `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 
-    const url = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=100`;
+    const url = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=500`;
     console.log('PrivatBank sync URL:', url);
-    const data = await httpsGet(url, { 'token': cleanToken, 'Content-Type': 'application/json', 'User-Agent': 'JewelryCRM/1.0' });
+    const data = await httpsGet(url, { 'token': cleanToken, 'Content-Type': 'application/json;charset=utf-8', 'User-Agent': 'JewelryCRM/1.0' });
     if (data.status !== 'SUCCESS') return res.status(400).json({ error: `ПриватБанк: ${data.message || data.errorDescription || JSON.stringify(data).substring(0, 200)}` });
 
-    const txList = data.transactions || [];
-    if (txList.length > 0) {
-      console.log('PrivatBank first tx keys:', Object.keys(txList[0]).join(', '));
-      console.log('PrivatBank first tx:', JSON.stringify(txList[0]));
+    // Збираємо всі транзакції з пагінацією
+    let allTx = data.transactions || [];
+    let nextPageId = data.exist_next_page ? data.next_page_id : null;
+    while (nextPageId) {
+      const nextUrl = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=500&followId=${nextPageId}`;
+      const nextData = await httpsGet(nextUrl, { 'token': cleanToken, 'Content-Type': 'application/json;charset=utf-8', 'User-Agent': 'JewelryCRM/1.0' });
+      if (nextData.status !== 'SUCCESS') break;
+      allTx = allTx.concat(nextData.transactions || []);
+      nextPageId = nextData.exist_next_page ? nextData.next_page_id : null;
     }
 
     let added = 0;
-    for (const tx of txList) {
-      const amount = parseFloat(tx.SUM || tx.AUT_MY_SUM || tx.AUT_SUM || 0);
-      const isIncome = tx.TRANTYPE === 'К' || tx.TRANTYPE === 'C' || tx.TRANTYPE === 'Credit' || tx.AUT_TRANTYPE === 'К';
-      // Знаходимо дату — пробуємо різні поля
-      const dtStr = tx.DATE_TIME_DAT_OD_TIM_P || tx.AUT_DAT_OD || tx.DAT_OD || tx.AUT_TIMESTAMP || '';
+    for (const tx of allTx) {
+      const amount = parseFloat(tx.SUM || 0);
+      // TRANTYPE: 'C' = credit = дохід, 'D' = debit = витрата
+      const isIncome = tx.TRANTYPE === 'C';
+      // Дата: DAT_OD формат DD.MM.YYYY, час TIM_P формат HH:MM
       let txDate;
       try {
-        if (dtStr) {
-          // Формат DD-MM-YYYY або DD.MM.YYYY HH:MM:SS
-          const normalized = dtStr.replace(/(\d{2})[.\-](\d{2})[.\-](\d{4})/, '$3-$2-$1');
-          txDate = new Date(normalized);
-          if (isNaN(txDate.getTime())) txDate = new Date();
+        if (tx.DAT_OD) {
+          const [d, m, y] = tx.DAT_OD.split('.');
+          const timeStr = tx.TIM_P || '00:00';
+          txDate = new Date(`${y}-${m}-${d}T${timeStr}:00`);
         } else {
           txDate = new Date();
         }
+        if (isNaN(txDate.getTime())) txDate = new Date();
       } catch(e) { txDate = new Date(); }
       const date = txDate.toISOString().split('T')[0];
-      const description = tx.OSND || tx.AUT_OSND || tx.AUT_CNTR_NAM || '';
-      const txId = 'privat_' + (tx.AUT_MY_CRF || tx.REF || (date + '_' + amount));
+      const description = tx.OSND || tx.AUT_CNTR_NAM || '';
+      const txId = 'privat_' + (tx.TECHNICAL_TRANSACTION_ID || tx.REF || (date + '_' + amount));
 
       if (isIncome) {
         await pool.query(
