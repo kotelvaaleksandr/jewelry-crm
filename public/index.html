@@ -1001,7 +1001,13 @@ loadDashboard();
 // ---- Регулярні витрати ----
 const DAY_NAMES = ['Понеділок','Вівторок','Середа','Четвер','Пятниця','Субота','Неділя'];
 const MONTH_NAMES = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const DAYS_IN_MONTH = [31,29,31,30,31,30,31,31,30,31,30,31];
 const PERIOD_LABELS = { week:'Щотижня', month:'Щомісяця', quarter:'Щокварталу', year:'Щороку' };
+
+function daysOpts(monthNum, selectedDay) {
+  const max = DAYS_IN_MONTH[(monthNum||1) - 1];
+  return Array.from({length: max}, (_,i) => `<option value="${i+1}" ${selectedDay==i+1?'selected':''}>${i+1}</option>`).join('');
+}
 
 function updateRegPayField(data) {
   const period = (data && data.period) || document.getElementById('reg-period').value;
@@ -1011,28 +1017,39 @@ function updateRegPayField(data) {
     el.innerHTML = `<label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">День тижня оплати</label>
       <select id="reg-pay-day" style="width:200px">${opts}</select>`;
   } else if (period === 'month') {
-    const days = Array.from({length:31},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
+    // Для місяця беремо 31 день (максимум)
     el.innerHTML = `<label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Дата оплати (число місяця)</label>
-      <select id="reg-pay-day" style="width:120px">${days}</select>`;
+      <select id="reg-pay-day" style="width:120px">${daysOpts(1, data&&data.pay_day)}</select>`;
+    // Перезаписуємо 31 днем бо місяць невідомий
+    document.getElementById('reg-pay-day').innerHTML = Array.from({length:31},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
   } else if (period === 'quarter') {
-    const months = [3,6,9,12].map(m=>`<option value="${m}" ${data&&data.pay_month==m?'selected':''}>${MONTH_NAMES[m-1]}</option>`).join('');
-    const days = Array.from({length:28},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
+    const selMonth = (data && data.pay_month) || 3;
+    const months = [3,6,9,12].map(m=>`<option value="${m}" ${selMonth==m?'selected':''}>${MONTH_NAMES[m-1]}</option>`).join('');
     el.innerHTML = `<div style="display:flex;gap:12px;align-items:flex-end">
       <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Місяць кварталу</label>
-        <select id="reg-pay-month" style="width:150px">${months}</select></div>
+        <select id="reg-pay-month" onchange="updateRegDays()" style="width:150px">${months}</select></div>
       <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Число місяця</label>
-        <select id="reg-pay-day" style="width:90px">${days}</select></div>
+        <select id="reg-pay-day" style="width:90px">${daysOpts(selMonth, data&&data.pay_day)}</select></div>
     </div>`;
   } else if (period === 'year') {
-    const months = MONTH_NAMES.map((m,i)=>`<option value="${i+1}" ${data&&data.pay_month==i+1?'selected':''}>${m}</option>`).join('');
-    const days = Array.from({length:28},(_,i)=>`<option value="${i+1}" ${data&&data.pay_day==i+1?'selected':''}>${i+1}</option>`).join('');
+    const selMonth = (data && data.pay_month) || 1;
+    const months = MONTH_NAMES.map((m,i)=>`<option value="${i+1}" ${selMonth==i+1?'selected':''}>${m}</option>`).join('');
     el.innerHTML = `<div style="display:flex;gap:12px;align-items:flex-end">
       <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Місяць оплати</label>
-        <select id="reg-pay-month" style="width:150px">${months}</select></div>
+        <select id="reg-pay-month" onchange="updateRegDays()" style="width:150px">${months}</select></div>
       <div><label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px">Число місяця</label>
-        <select id="reg-pay-day" style="width:90px">${days}</select></div>
+        <select id="reg-pay-day" style="width:90px">${daysOpts(selMonth, data&&data.pay_day)}</select></div>
     </div>`;
   }
+}
+
+function updateRegDays() {
+  const monthSel = document.getElementById('reg-pay-month');
+  const daySel = document.getElementById('reg-pay-day');
+  if (!monthSel || !daySel) return;
+  const m = +monthSel.value;
+  const curDay = +daySel.value;
+  daySel.innerHTML = daysOpts(m, curDay);
 }
 
 function getRegPayValues() {
