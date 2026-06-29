@@ -138,6 +138,24 @@ router.delete('/expense-categories/:id', auth, async (req, res) => {
   res.json({ success: true });
 });
 
+// Планові показники
+router.get('/plans', auth, async (req, res) => {
+  const result = await pool.query('SELECT * FROM plans WHERE user_id=$1', [req.userId]);
+  res.json(result.rows);
+});
+router.post('/plans', auth, async (req, res) => {
+  const { category, category_type, period, value_type, value, condition, active } = req.body;
+  const result = await pool.query(
+    `INSERT INTO plans (user_id, category, category_type, period, value_type, value, condition, active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT (user_id, category, category_type)
+     DO UPDATE SET period=$4, value_type=$5, value=$6, condition=$7, active=$8
+     RETURNING *`,
+    [req.userId, category, category_type, period, value_type, value ?? null, condition, active !== false]
+  );
+  res.json(result.rows[0]);
+});
+
 // Регулярні витрати
 router.get('/regular-expenses', auth, async (req, res) => {
   const result = await pool.query('SELECT * FROM regular_expenses WHERE user_id=$1 ORDER BY name', [req.userId]);

@@ -22,6 +22,18 @@ require('./db').query(`
   );
   UPDATE incomes SET source='Monobank' WHERE bank_tx_id IS NOT NULL AND source IS NULL;
   UPDATE expenses SET source='Monobank' WHERE bank_tx_id IS NOT NULL AND source IS NULL;
+  CREATE TABLE IF NOT EXISTS plans (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    category VARCHAR(200) NOT NULL,
+    category_type VARCHAR(20) NOT NULL,
+    period VARCHAR(20) NOT NULL DEFAULT 'month',
+    value_type VARCHAR(20) NOT NULL DEFAULT 'absolute',
+    value NUMERIC(12,2),
+    condition VARCHAR(10) DEFAULT 'gte',
+    active BOOLEAN DEFAULT true,
+    UNIQUE(user_id, category, category_type)
+  );
   CREATE TABLE IF NOT EXISTS regular_expenses (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,

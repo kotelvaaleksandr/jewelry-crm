@@ -54,6 +54,7 @@
 </div>
 <div class="nav">
   <button class="active" onclick="showTab('dashboard')">Дашборд</button>
+  <button onclick="showTab('plan')">План</button>
   <button onclick="showTab('incomes')">Доходи</button>
   <button onclick="showTab('expenses')">Витрати</button>
   <button onclick="showTab('purchases')">Закупівлі</button>
@@ -89,6 +90,24 @@
       <h2>Останні операції</h2>
       <table><thead><tr><th>Дата</th><th>Тип</th><th>Сума</th><th>Опис</th></tr></thead>
       <tbody id="d-recent"></tbody></table>
+    </div>
+  </div>
+
+  <!-- План -->
+  <div class="tab" id="tab-plan">
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="margin-bottom:4px">Планові показники</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:20px">Встановіть цільові значення для кожної статті доходів і витрат</p>
+
+      <h3 style="font-size:14px;font-weight:700;color:#059669;margin-bottom:12px">Доходи</h3>
+      <div id="plan-incomes" style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px"></div>
+
+      <h3 style="font-size:14px;font-weight:700;color:#dc2626;margin-bottom:12px">Витрати</h3>
+      <div id="plan-expenses" style="display:flex;flex-direction:column;gap:10px"></div>
+
+      <div style="margin-top:20px">
+        <button class="btn" onclick="saveAllPlans()" style="background:#6366f1;padding:10px 28px">Зберегти всі плани</button>
+      </div>
     </div>
   </div>
 
@@ -430,6 +449,7 @@ function showTab(name) {
   if (name === 'incomes') loadIncomeTypes().then(loadIncomes);
   if (name === 'expenses') loadExpenseCategories().then(loadExpenses);
   if (name === 'purchases') loadPurchases();
+  if (name === 'plan') loadPlan();
   if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); }
 }
 
@@ -1062,6 +1082,97 @@ async function removeIntegration(provider) {
   if (provider === 'privatbank') {
     document.getElementById('privat-iban').value = '';
   }
+}
+
+// ---- Планові показники ----
+let plansData = {};
+
+function planRowHtml(name, type, plan) {
+  const id = `plan_${type}_${name.replace(/\s+/g,'_').replace(/[^a-zA-Zа-яА-ЯїЇіІєЄ_0-9]/g,'_')}`;
+  const active = plan ? plan.active : true;
+  const period = plan ? plan.period : 'month';
+  const valueType = plan ? plan.value_type : 'absolute';
+  const value = plan ? (plan.value ?? '') : '';
+  const condition = plan ? plan.condition : 'gte';
+
+  const periodOpts = [['week','Тиждень'],['month','Місяць'],['quarter','Квартал'],['year','Рік']]
+    .map(([v,l]) => `<option value="${v}" ${period===v?'selected':''}>${l}</option>`).join('');
+  const condOpts = [['gte','≥ (не менше)'],['eq','= (дорівнює)'],['lte','≤ (не більше)']]
+    .map(([v,l]) => `<option value="${v}" ${condition===v?'selected':''}>${l}</option>`).join('');
+
+  return `<div id="${id}_row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:#f8f9fa;border-radius:10px;border:1.5px solid ${active?'#e0e0e0':'#f0f0f0'}">
+    <div style="min-width:160px;font-weight:600;font-size:13px;color:${active?'#1a1a1a':'#aaa'}">${name}</div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer;flex-shrink:0">
+      <input type="checkbox" id="${id}_active" ${active?'checked':''} onchange="togglePlanRow('${id}')">
+      Відстежувати
+    </label>
+    <div id="${id}_fields" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;${active?'':'opacity:.3;pointer-events:none'}">
+      <select id="${id}_period" style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">${periodOpts}</select>
+      <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden">
+        <button id="${id}_abs" onclick="setPlanValueType('${id}','absolute')" style="padding:4px 10px;font-size:12px;background:${valueType==='absolute'?'#6366f1':'#fff'};color:${valueType==='absolute'?'#fff':'#333'};border:none;cursor:pointer">₴</button>
+        <button id="${id}_pct" onclick="setPlanValueType('${id}','percent')" style="padding:4px 10px;font-size:12px;background:${valueType==='percent'?'#6366f1':'#fff'};color:${valueType==='percent'?'#fff':'#333'};border:none;cursor:pointer">%</button>
+      </div>
+      <input type="number" id="${id}_value" value="${value}" placeholder="0" min="0" style="width:90px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+      <select id="${id}_condition" style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">${condOpts}</select>
+    </div>
+    <input type="hidden" id="${id}_type" value="${type}">
+    <input type="hidden" id="${id}_name" value="${name}">
+    <input type="hidden" id="${id}_valuetype" value="${valueType}">
+  </div>`;
+}
+
+function togglePlanRow(id) {
+  const active = document.getElementById(id + '_active').checked;
+  const fields = document.getElementById(id + '_fields');
+  const row = document.getElementById(id + '_row');
+  fields.style.opacity = active ? '1' : '.3';
+  fields.style.pointerEvents = active ? '' : 'none';
+  const nameEl = row.querySelector('div[style*="font-weight:600"]');
+  if (nameEl) nameEl.style.color = active ? '#1a1a1a' : '#aaa';
+  row.style.borderColor = active ? '#e0e0e0' : '#f0f0f0';
+}
+
+function setPlanValueType(id, vtype) {
+  document.getElementById(id + '_valuetype').value = vtype;
+  document.getElementById(id + '_abs').style.background = vtype === 'absolute' ? '#6366f1' : '#fff';
+  document.getElementById(id + '_abs').style.color = vtype === 'absolute' ? '#fff' : '#333';
+  document.getElementById(id + '_pct').style.background = vtype === 'percent' ? '#6366f1' : '#fff';
+  document.getElementById(id + '_pct').style.color = vtype === 'percent' ? '#fff' : '#333';
+}
+
+async function loadPlan() {
+  const [incTypes, expCats, plans, regExp] = await Promise.all([
+    api('/income-types'), api('/expense-categories'), api('/plans'), api('/regular-expenses')
+  ]);
+  plansData = {};
+  (plans || []).forEach(p => { plansData[`${p.category_type}_${p.category}`] = p; });
+
+  const allExpCats = [...(expCats||[]).map(c=>c.name)];
+  const catNames = new Set(allExpCats);
+  (regExp||[]).forEach(r => { if (!catNames.has(r.name)) allExpCats.push(r.name); });
+
+  document.getElementById('plan-incomes').innerHTML =
+    (incTypes||[]).map(t => planRowHtml(t.name, 'income', plansData[`income_${t.name}`])).join('');
+  document.getElementById('plan-expenses').innerHTML =
+    allExpCats.map(n => planRowHtml(n, 'expense', plansData[`expense_${n}`])).join('');
+}
+
+async function saveAllPlans() {
+  const rows = document.querySelectorAll('#tab-plan [id$="_name"]');
+  let saved = 0;
+  for (const el of rows) {
+    const id = el.id.replace('_name','');
+    const name = el.value;
+    const type = document.getElementById(id + '_type').value;
+    const active = document.getElementById(id + '_active').checked;
+    const period = document.getElementById(id + '_period').value;
+    const valueType = document.getElementById(id + '_valuetype').value;
+    const value = parseFloat(document.getElementById(id + '_value').value) || null;
+    const condition = document.getElementById(id + '_condition').value;
+    await api('/plans', 'POST', { category: name, category_type: type, period, value_type: valueType, value, condition, active });
+    saved++;
+  }
+  alert(`Збережено ${saved} планових показників`);
 }
 
 loadDashboard();
