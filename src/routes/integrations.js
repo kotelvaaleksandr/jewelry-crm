@@ -73,9 +73,15 @@ router.post('/privatbank/accounts', auth, async (req, res) => {
   try {
     const data = await httpsGet('https://acp.privatbank.ua/api/statements/accounts', {
       'token': token,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'User-Agent': 'JewelryCRM/1.0'
     });
-    if (data.status !== 'OK') return res.status(400).json({ error: data.message || 'Помилка API ПриватБанку' });
+    console.log('PrivatBank accounts response:', JSON.stringify(data));
+    if (data.status !== 'OK') {
+      return res.status(400).json({
+        error: `ПриватБанк: ${data.message || data.status || 'Невідома помилка'}. Перевірте що в Приват24 для бізнесу активований API доступ (Налаштування → API → Активувати).`
+      });
+    }
     const accounts = (data.data || []).map(a => ({
       id: a.acc,
       iban: a.acc,
