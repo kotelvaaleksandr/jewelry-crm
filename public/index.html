@@ -186,15 +186,26 @@
           <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">API токен</label>
           <div style="display:flex;gap:8px">
             <input type="password" id="mono-token" placeholder="Вставте токен з додатку Monobank" style="flex:1">
-            <button class="btn" onclick="saveIntegration('monobank')">Підключити</button>
+            <button class="btn" onclick="loadMonoAccounts()">Далі →</button>
           </div>
           <p style="font-size:12px;color:#999;margin-top:6px">Додаток Monobank → Налаштування → Особисті дані → Для розробників → Токен</p>
+          <div id="mono-accounts" style="display:none;margin-top:14px">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Оберіть рахунок:</label>
+            <div id="mono-accounts-list"></div>
+          </div>
         </div>
         <div id="mono-connected" style="display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:13px;color:#059669;font-weight:600">✓ Підключено</span>
-            <button class="btn btn-red" onclick="removeIntegration('monobank')" style="padding:6px 12px;font-size:12px">Відключити</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div>
+              <span style="font-size:13px;color:#059669;font-weight:600">✓ Підключено</span>
+              <span id="mono-account-name" style="font-size:12px;color:#666;margin-left:8px"></span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" onclick="syncMonobank()" style="padding:6px 14px;font-size:12px;background:#059669">↻ Синхронізувати</button>
+              <button class="btn btn-red" onclick="removeIntegration('monobank')" style="padding:6px 12px;font-size:12px">Відключити</button>
+            </div>
           </div>
+          <div id="mono-sync-result" style="font-size:12px;color:#666;margin-top:8px"></div>
         </div>
       </div>
 
@@ -433,6 +444,77 @@ async function loadIntegrations() {
     document.getElementById(els.form).style.display = found ? 'none' : 'block';
     document.getElementById(els.connected).style.display = found ? 'block' : 'none';
   }
+  const mono = data.find(r => r.provider === 'monobank' && r.enabled);
+  if (mono && mono.last_sync) {
+    document.getElementById('mono-sync-result').textContent = 'Остання синхронізація: ' + new Date(mono.last_sync).toLocaleString('uk-UA');
+  }
+}
+
+async function loadMonoAccounts() {
+  const tokenVal = document.getElementById('mono-token').value.trim();
+  if (!tokenVal) return alert('Введіть токен');
+  const btn = event.target;
+  btn.textContent = '...';
+  btn.disabled = true;
+  const res = await api('/integrations/monobank/accounts', 'POST', { token: tokenVal });
+  btn.textContent = 'Далі →';
+  btn.disabled = false;
+  if (res.error) return alert('Помилка: ' + res.error);
+  const typeLabels = { fop: 'ФОП', black: 'Чорна', white: 'Біла', yellow: 'Жовта', platinum: 'Платинова', eAid: 'єПідтримка', madeInUkraine: 'Зроблено в Україні' };
+  document.getElementById('mono-accounts').style.display = 'block';
+  document.getElementById('mono-accounts-list').innerHTML = res.accounts.map(a =>
+    `<div onclick="selectMonoAccount('${a.id}','${a.name} ${a.currency}', this)" style="padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:8px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:600;font-size:13px">${a.name} · ${a.currency}</div>
+        <div style="font-size:11px;color:#999">${a.iban}</div>
+      </div>
+      <div style="font-weight:700;font-size:14px">${a.balance.toLocaleString('uk-UA')} ${a.currency}</div>
+    </div>`
+  ).join('');
+}
+
+let selectedMonoAccountId = null;
+
+function selectMonoAccount(id, name, el) {
+  selectedMonoAccountId = id;
+  document.querySelectorAll('#mono-accounts-list > div').forEach(d => d.style.border = '1.5px solid #e0e0e0');
+  el.style.border = '2px solid #6c47ff';
+  if (!document.getElementById('mono-save-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'mono-save-btn';
+    btn.className = 'btn';
+    btn.style = 'margin-top:10px;width:100%';
+    btn.textContent = 'Підключити цей рахунок';
+    btn.onclick = () => saveMonoIntegration(name);
+    document.getElementById('mono-accounts').appendChild(btn);
+  }
+}
+
+async function saveMonoIntegration(accountName) {
+  const tokenVal = document.getElementById('mono-token').value.trim();
+  const res = await api('/integrations/monobank', 'POST', { token: tokenVal, account_id: selectedMonoAccountId });
+  if (res && res.id) {
+    document.getElementById('mono-form').style.display = 'none';
+    document.getElementById('mono-connected').style.display = 'block';
+    document.getElementById('mono-account-name').textContent = '· ' + accountName;
+    document.getElementById('mono-accounts').style.display = 'none';
+  } else {
+    alert('Помилка збереження');
+  }
+}
+
+async function syncMonobank() {
+  const btn = event.target;
+  btn.textContent = 'Синхронізація...';
+  btn.disabled = true;
+  const res = await api('/integrations/monobank/sync', 'POST');
+  btn.textContent = '↻ Синхронізувати';
+  btn.disabled = false;
+  if (res.error) {
+    document.getElementById('mono-sync-result').textContent = 'Помилка: ' + res.error;
+  } else {
+    document.getElementById('mono-sync-result').textContent = `Синхронізовано ${res.synced} транзакцій · ${new Date().toLocaleString('uk-UA')}`;
+  }
 }
 
 async function saveIntegration(provider) {
@@ -454,6 +536,12 @@ async function removeIntegration(provider) {
   document.getElementById(els.form).style.display = 'block';
   document.getElementById(els.connected).style.display = 'none';
   document.getElementById(els.input).value = '';
+  if (provider === 'monobank') {
+    document.getElementById('mono-accounts').style.display = 'none';
+    selectedMonoAccountId = null;
+    const saveBtn = document.getElementById('mono-save-btn');
+    if (saveBtn) saveBtn.remove();
+  }
 }
 
 loadDashboard();
