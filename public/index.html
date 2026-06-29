@@ -579,11 +579,12 @@ async function loadIncomeTypes() {
 
 async function loadExpenseCategories() {
   const [cats, regExp] = await Promise.all([api('/expense-categories'), api('/regular-expenses')]);
-  expenseCategories = cats;
+  expenseCategories = Array.isArray(cats) ? cats : [];
+  const regList = Array.isArray(regExp) ? regExp : [];
   // Додаємо назви регулярних витрат яких ще немає серед категорій
-  const catNames = new Set(cats.map(c => c.name));
-  const regNames = (regExp || []).map(r => r.name).filter(n => !catNames.has(n));
-  const allOptions = cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('') +
+  const catNames = new Set(expenseCategories.map(c => c.name));
+  const regNames = regList.map(r => r.name).filter(n => n && !catNames.has(n));
+  const allOptions = expenseCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('') +
     (regNames.length ? '<optgroup label="— Регулярні витрати —">' + regNames.map(n => `<option value="${n}">${n}</option>`).join('') + '</optgroup>' : '');
 
   const filterSel = document.getElementById('e-filter-cat');
