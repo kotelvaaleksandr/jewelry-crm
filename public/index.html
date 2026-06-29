@@ -72,6 +72,12 @@
       <div id="dist-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"></div>
     </div>
 
+    <!-- Регулярні витрати поточного місяця -->
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="margin-bottom:14px">Регулярні витрати (поточний місяць)</h2>
+      <div id="dash-regular-expenses" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+    </div>
+
     <div class="stats">
       <div class="stat"><div class="val green" id="d-income">0 ₴</div><div class="lbl">Доходи (всього)</div></div>
       <div class="stat"><div class="val red" id="d-expense">0 ₴</div><div class="lbl">Витрати</div></div>
@@ -545,6 +551,26 @@ async function loadDashboard() {
     `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
       <div style="width:12px;height:12px;border-radius:3px;background:${PROFIT_COLOR};flex-shrink:0"></div>Прибуток
     </div>`;
+
+  // --- Регулярні витрати поточного місяця ---
+  const regExpenses = await api('/regular-expenses');
+  if (Array.isArray(regExpenses)) {
+    const paidThisMonth = new Set(
+      expenses.filter(r => inPeriod(r.date, monthFrom, monthTo)).map(r => r.category)
+    );
+    document.getElementById('dash-regular-expenses').innerHTML = regExpenses.length === 0
+      ? '<p style="color:#aaa;font-size:13px">Немає регулярних витрат</p>'
+      : regExpenses.map(r => {
+          const paid = paidThisMonth.has(r.name);
+          const bg = paid ? '#dcfce7' : '#fee2e2';
+          const fg = paid ? '#059669' : '#dc2626';
+          return `<div style="background:${bg};border-radius:10px;padding:10px 16px;min-width:160px">
+            <div style="font-size:13px;font-weight:700;color:#333">${r.name}</div>
+            <div style="font-size:15px;font-weight:700;color:${fg};margin-top:2px">${fmt(+r.amount)}</div>
+            <div style="font-size:11px;color:${fg};margin-top:2px">${paid ? '✓ Оплачено' : '✕ Не оплачено'}</div>
+          </div>`;
+        }).join('');
+  }
 
   // --- Останні операції ---
   const recent = [
