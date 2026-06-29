@@ -104,6 +104,15 @@
             <option value="">Всі</option>
           </select>
         </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Джерело</label>
+          <select id="i-filter-source" onchange="loadIncomes()" style="width:140px">
+            <option value="">Всі</option>
+            <option value="Monobank">Monobank</option>
+            <option value="ПриватБанк">ПриватБанк</option>
+            <option value="manual">Ручне введення</option>
+          </select>
+        </div>
         <button class="btn" onclick="clearFilters('i')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
         <button class="btn" onclick="toggleTypeManager('income')" style="background:#6366f1;padding:8px 14px;font-size:12px">⚙ Типи</button>
         <button id="income-sort-btn" class="btn" onclick="toggleIncomeSort()" style="background:#0891b2;padding:8px 14px;font-size:12px">↓ Час</button>
@@ -147,6 +156,15 @@
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Категорія</label>
           <select id="e-filter-cat" onchange="loadExpenses()" style="width:160px">
             <option value="">Всі</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Джерело</label>
+          <select id="e-filter-source" onchange="loadExpenses()" style="width:140px">
+            <option value="">Всі</option>
+            <option value="Monobank">Monobank</option>
+            <option value="ПриватБанк">ПриватБанк</option>
+            <option value="manual">Ручне введення</option>
           </select>
         </div>
         <button class="btn" onclick="clearFilters('e')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
@@ -482,14 +500,10 @@ async function addExpenseCategory() {
 }
 
 function clearFilters(prefix) {
-  const from = document.getElementById(prefix+'-filter-from');
-  const to = document.getElementById(prefix+'-filter-to');
-  if (from) from.value = '';
-  if (to) to.value = '';
-  const type = document.getElementById(prefix+'-filter-type');
-  const cat = document.getElementById(prefix+'-filter-cat');
-  if (type) type.value = '';
-  if (cat) cat.value = '';
+  ['from','to','type','cat','source'].forEach(f => {
+    const el = document.getElementById(prefix+'-filter-'+f);
+    if (el) el.value = '';
+  });
   if (prefix === 'i') loadIncomes();
   else loadExpenses();
 }
@@ -500,10 +514,13 @@ async function loadIncomes() {
   const from = document.getElementById('i-filter-from')?.value || '';
   const to = document.getElementById('i-filter-to')?.value || '';
   const type = document.getElementById('i-filter-type')?.value || '';
+  const source = document.getElementById('i-filter-source')?.value || '';
   let data = await api('/incomes');
   if (from) data = data.filter(r => r.date.slice(0, 10) >= from);
   if (to) data = data.filter(r => r.date.slice(0, 10) <= to);
   if (type) data = data.filter(r => r.type === type);
+  if (source === 'manual') data = data.filter(r => !r.source);
+  else if (source) data = data.filter(r => r.source === source);
   if (incomeSortAsc) {
     data = data.slice().sort((a, b) => {
       const ta = a.transaction_time ? new Date(a.transaction_time) : new Date(a.date);
@@ -556,10 +573,13 @@ async function loadExpenses() {
   const from = document.getElementById('e-filter-from')?.value || '';
   const to = document.getElementById('e-filter-to')?.value || '';
   const cat = document.getElementById('e-filter-cat')?.value || '';
+  const source = document.getElementById('e-filter-source')?.value || '';
   let data = await api('/expenses');
   if (from) data = data.filter(r => r.date.slice(0, 10) >= from);
   if (to) data = data.filter(r => r.date.slice(0, 10) <= to);
   if (cat) data = data.filter(r => r.category === cat);
+  if (source === 'manual') data = data.filter(r => !r.source);
+  else if (source) data = data.filter(r => r.source === source);
   if (expenseSortAsc) {
     data = data.slice().sort((a, b) => {
       const ta = a.transaction_time ? new Date(a.transaction_time) : new Date(a.date);
