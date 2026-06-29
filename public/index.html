@@ -106,6 +106,7 @@
         </div>
         <button class="btn" onclick="clearFilters('i')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
         <button class="btn" onclick="toggleTypeManager('income')" style="background:#6366f1;padding:8px 14px;font-size:12px">⚙ Типи</button>
+        <button id="income-sort-btn" class="btn" onclick="toggleIncomeSort()" style="background:#0891b2;padding:8px 14px;font-size:12px">↓ Час</button>
       </div>
       <div id="income-type-manager" style="display:none;border:1.5px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:14px;background:#f8f8f8">
         <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#444">Управління типами доходів</div>
@@ -150,6 +151,7 @@
         </div>
         <button class="btn" onclick="clearFilters('e')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
         <button class="btn" onclick="toggleTypeManager('expense')" style="background:#6366f1;padding:8px 14px;font-size:12px">⚙ Категорії</button>
+        <button id="expense-sort-btn" class="btn" onclick="toggleExpenseSort()" style="background:#0891b2;padding:8px 14px;font-size:12px">↓ Час</button>
       </div>
       <div id="expense-type-manager" style="display:none;border:1.5px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:14px;background:#f8f8f8">
         <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#444">Управління категоріями витрат</div>
@@ -336,6 +338,13 @@ async function api(path, method = 'GET', body) {
 
 function fmt(n) { return Number(n).toLocaleString('uk-UA') + ' ₴'; }
 function fmtDate(d) { return new Date(d).toLocaleDateString('uk-UA'); }
+function fmtDateTime(row) {
+  if (row.transaction_time) {
+    const dt = new Date(row.transaction_time);
+    return dt.toLocaleDateString('uk-UA') + '<br><span style="font-size:11px;color:#888">' + dt.toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'}) + '</span>';
+  }
+  return fmtDate(row.date);
+}
 
 async function loadDashboard() {
   const [incomes, expenses, purchases] = await Promise.all([
@@ -476,6 +485,8 @@ function clearFilters(prefix) {
   else loadExpenses();
 }
 
+let incomeSortAsc = false;
+
 async function loadIncomes() {
   const from = document.getElementById('i-filter-from')?.value || '';
   const to = document.getElementById('i-filter-to')?.value || '';
@@ -484,8 +495,15 @@ async function loadIncomes() {
   if (from) data = data.filter(r => r.date >= from);
   if (to) data = data.filter(r => r.date <= to);
   if (type) data = data.filter(r => r.type === type);
+  if (incomeSortAsc) {
+    data = data.slice().sort((a, b) => {
+      const ta = a.transaction_time ? new Date(a.transaction_time) : new Date(a.date);
+      const tb = b.transaction_time ? new Date(b.transaction_time) : new Date(b.date);
+      return ta - tb;
+    });
+  }
   document.getElementById('incomes-list').innerHTML = data.map(r =>
-    `<tr><td>${fmtDate(r.date)}</td>
+    `<tr><td style="white-space:nowrap">${fmtDateTime(r)}</td>
      <td><select onchange="updateIncome(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
        ${incomeTypes.map(t=>`<option${t.name===r.type?' selected':''}>${t.name}</option>`).join('')}
      </select></td>
@@ -494,6 +512,12 @@ async function loadIncomes() {
      <td>${r.description||''}</td>
      <td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`
   ).join('');
+}
+
+function toggleIncomeSort() {
+  incomeSortAsc = !incomeSortAsc;
+  document.getElementById('income-sort-btn').textContent = incomeSortAsc ? '↑ Час' : '↓ Час';
+  loadIncomes();
 }
 
 async function updateIncome(id, type) {
@@ -517,6 +541,8 @@ async function deleteIncome(id) {
   loadIncomes();
 }
 
+let expenseSortAsc = false;
+
 async function loadExpenses() {
   const from = document.getElementById('e-filter-from')?.value || '';
   const to = document.getElementById('e-filter-to')?.value || '';
@@ -525,8 +551,15 @@ async function loadExpenses() {
   if (from) data = data.filter(r => r.date >= from);
   if (to) data = data.filter(r => r.date <= to);
   if (cat) data = data.filter(r => r.category === cat);
+  if (expenseSortAsc) {
+    data = data.slice().sort((a, b) => {
+      const ta = a.transaction_time ? new Date(a.transaction_time) : new Date(a.date);
+      const tb = b.transaction_time ? new Date(b.transaction_time) : new Date(b.date);
+      return ta - tb;
+    });
+  }
   document.getElementById('expenses-list').innerHTML = data.map(r =>
-    `<tr><td>${fmtDate(r.date)}</td>
+    `<tr><td style="white-space:nowrap">${fmtDateTime(r)}</td>
      <td><select onchange="updateExpense(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
        ${expenseCategories.map(c=>`<option${c.name===r.category?' selected':''}>${c.name}</option>`).join('')}
      </select></td>
@@ -535,6 +568,12 @@ async function loadExpenses() {
      <td>${r.description||''}</td>
      <td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`
   ).join('');
+}
+
+function toggleExpenseSort() {
+  expenseSortAsc = !expenseSortAsc;
+  document.getElementById('expense-sort-btn').textContent = expenseSortAsc ? '↑ Час' : '↓ Час';
+  loadExpenses();
 }
 
 async function updateExpense(id, category) {

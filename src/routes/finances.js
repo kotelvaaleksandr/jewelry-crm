@@ -6,7 +6,10 @@ const router = express.Router();
 
 // Доходи
 router.get('/incomes', auth, async (req, res) => {
-  const result = await pool.query('SELECT * FROM incomes WHERE user_id = $1 ORDER BY date DESC', [req.userId]);
+  const result = await pool.query(
+    'SELECT * FROM incomes WHERE user_id = $1 ORDER BY COALESCE(transaction_time, date::timestamp) DESC, id DESC',
+    [req.userId]
+  );
   res.json(result.rows);
 });
 
@@ -32,7 +35,10 @@ router.delete('/incomes/:id', auth, async (req, res) => {
 
 // Витрати
 router.get('/expenses', auth, async (req, res) => {
-  const result = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC', [req.userId]);
+  const result = await pool.query(
+    'SELECT * FROM expenses WHERE user_id = $1 ORDER BY COALESCE(transaction_time, date::timestamp) DESC, id DESC',
+    [req.userId]
+  );
   res.json(result.rows);
 });
 

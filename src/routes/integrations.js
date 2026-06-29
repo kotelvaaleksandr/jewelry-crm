@@ -86,21 +86,22 @@ router.post('/monobank/sync', auth, async (req, res) => {
     let added = 0;
     for (const tx of data) {
       const amount = tx.amount / 100;
-      const date = new Date(tx.time * 1000).toISOString().split('T')[0];
+      const txDate = new Date(tx.time * 1000);
+      const date = txDate.toISOString().split('T')[0];
       const description = tx.description || '';
       if (amount > 0) {
         await pool.query(
-          `INSERT INTO incomes (user_id, amount, type, source, description, date, bank_tx_id)
-           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5)
+          `INSERT INTO incomes (user_id, amount, type, source, description, date, transaction_time, bank_tx_id)
+           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5,$6)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, description, date, tx.id]
+          [req.userId, amount, description, date, txDate, tx.id]
         );
       } else {
         await pool.query(
-          `INSERT INTO expenses (user_id, amount, category, source, description, date, bank_tx_id)
-           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5)
+          `INSERT INTO expenses (user_id, amount, category, source, description, date, transaction_time, bank_tx_id)
+           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5,$6)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, Math.abs(amount), description, date, tx.id]
+          [req.userId, Math.abs(amount), description, date, txDate, tx.id]
         );
       }
       added++;

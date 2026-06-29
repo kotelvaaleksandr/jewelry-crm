@@ -6,6 +6,8 @@ require('dotenv').config();
 require('./db').query(`
   ALTER TABLE incomes ADD COLUMN IF NOT EXISTS source VARCHAR(100);
   ALTER TABLE expenses ADD COLUMN IF NOT EXISTS source VARCHAR(100);
+  ALTER TABLE incomes ADD COLUMN IF NOT EXISTS transaction_time TIMESTAMP;
+  ALTER TABLE expenses ADD COLUMN IF NOT EXISTS transaction_time TIMESTAMP;
   CREATE TABLE IF NOT EXISTS income_types (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
