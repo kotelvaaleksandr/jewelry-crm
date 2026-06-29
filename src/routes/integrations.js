@@ -68,12 +68,13 @@ router.post('/:provider', auth, async (req, res) => {
 
 // ПриватБанк — отримати список рахунків
 router.post('/privatbank/accounts', auth, async (req, res) => {
-  const { token } = req.body;
-  if (!token) return res.status(400).json({ error: 'Токен відсутній' });
-  // Видаляємо пробіли та переноси рядків з токену
+  const { client_id, token } = req.body;
+  if (!client_id || !token) return res.status(400).json({ error: 'Client ID та Token обовязкові' });
+  const cleanId = client_id.replace(/\s+/g, '');
   const cleanToken = token.replace(/\s+/g, '');
   try {
     const data = await httpsGet('https://acp.privatbank.ua/api/statements/accounts', {
+      'id': cleanId,
       'token': cleanToken,
       'Content-Type': 'application/json',
       'User-Agent': 'JewelryCRM/1.0'
@@ -106,14 +107,17 @@ router.post('/privatbank/sync', auth, async (req, res) => {
       [req.userId, 'privatbank']
     );
     if (!intResult.rows.length) return res.status(400).json({ error: 'ПриватБанк не підключено' });
-    const { token, account_id } = intResult.rows[0];
+    const { token: savedToken, account_id } = intResult.rows[0];
+    const [clientId, token] = savedToken.includes('|') ? savedToken.split('|') : ['', savedToken];
 
     const now = new Date();
     const from = new Date(now - 30 * 24 * 60 * 60 * 1000);
     const fmtD = d => `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 
     const url = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=100`;
-    const data = await httpsGet(url, { 'token': token, 'Content-Type': 'application/json' });
+    const headers = { 'token': token, 'Content-Type': 'application/json', 'User-Agent': 'JewelryCRM/1.0' };
+    if (clientId) headers['id'] = clientId;
+    const data = await httpsGet(url, headers);
 
     if (data.status !== 'OK') return res.status(400).json({ error: data.message || 'Помилка API ПриватБанку' });
 
