@@ -63,8 +63,17 @@
 
   <!-- Дашборд -->
   <div class="tab active" id="tab-dashboard">
+
+    <!-- Діаграма розподілу коштів -->
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="margin-bottom:16px">Розподіл коштів</h2>
+      <div id="dist-chart"></div>
+      <!-- Легенда -->
+      <div id="dist-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"></div>
+    </div>
+
     <div class="stats">
-      <div class="stat"><div class="val green" id="d-income">0 ₴</div><div class="lbl">Доходи</div></div>
+      <div class="stat"><div class="val green" id="d-income">0 ₴</div><div class="lbl">Доходи (всього)</div></div>
       <div class="stat"><div class="val red" id="d-expense">0 ₴</div><div class="lbl">Витрати</div></div>
       <div class="stat"><div class="val blue" id="d-purchase">0 ₴</div><div class="lbl">Закупівлі</div></div>
       <div class="stat"><div class="val purple" id="d-profit">0 ₴</div><div class="lbl">Прибуток</div></div>
@@ -373,6 +382,82 @@ function fmtDateTime(row) {
   return fmtDate(row.date);
 }
 
+// Палітра кольорів для категорій витрат
+const DIST_COLORS = [
+  '#6366f1','#f59e0b','#ef4444','#10b981','#3b82f6','#ec4899','#8b5cf6',
+  '#14b8a6','#f97316','#84cc16','#06b6d4','#a855f7','#e11d48','#0ea5e9'
+];
+const PROFIT_COLOR = '#059669';
+
+function getWeekBounds() {
+  const now = new Date();
+  const day = now.getDay() === 0 ? 6 : now.getDay() - 1; // пн=0
+  const mon = new Date(now); mon.setDate(now.getDate() - day); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+  return [mon, sun];
+}
+
+function inPeriod(dateStr, from, to) {
+  const d = dateStr.slice(0,10);
+  return d >= from && d <= to;
+}
+
+function buildDistData(incomes, expenses, purchases, from, to) {
+  const inc = incomes.filter(r => inPeriod(r.date, from, to)).reduce((s,r) => s + +r.amount, 0);
+  if (inc <= 0) return null;
+  // Групуємо витрати по категорії
+  const cats = {};
+  expenses.filter(r => inPeriod(r.date, from, to)).forEach(r => {
+    const cat = r.category || 'Некласифіковано';
+    cats[cat] = (cats[cat] || 0) + +r.amount;
+  });
+  // Закупівлі окремою категорією
+  const purch = purchases.filter(r => inPeriod(r.date, from, to)).reduce((s,r) => s + +r.amount, 0);
+  if (purch > 0) cats['Закупівлі'] = (cats['Закупівлі'] || 0) + purch;
+
+  const totalExp = Object.values(cats).reduce((s,v) => s+v, 0);
+  const profit = Math.max(0, inc - totalExp);
+  return { income: inc, cats, profit };
+}
+
+function renderDistRow(label, data, colorMap) {
+  if (!data) {
+    return `<div style="margin-bottom:18px">
+      <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:6px">${label}</div>
+      <div style="height:48px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px">Немає даних</div>
+    </div>`;
+  }
+  const { income, cats, profit } = data;
+  const segments = Object.entries(cats).map(([name, val]) => ({ name, val, pct: val/income*100 }));
+  const profitPct = profit/income*100;
+
+  const bars = segments.map(s =>
+    `<div title="${s.name}: ${fmt(s.val)} (${s.pct.toFixed(1)}%)"
+      style="width:${s.pct}%;background:${colorMap[s.name]};height:100%;transition:opacity .2s"
+      onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"></div>`
+  ).join('');
+  const profitBar = profitPct > 0
+    ? `<div title="Прибуток: ${fmt(profit)} (${profitPct.toFixed(1)}%)"
+        style="flex:1;background:${PROFIT_COLOR};height:100%;transition:opacity .2s"
+        onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"></div>`
+    : '';
+
+  const labels = segments.filter(s => s.pct >= 3).map(s =>
+    `<div style="position:absolute;left:${segments.slice(0,segments.indexOf(s)).reduce((a,x)=>a+x.pct,0) + s.pct/2}%;transform:translateX(-50%);font-size:10px;color:#fff;font-weight:700;white-space:nowrap;pointer-events:none">${s.pct.toFixed(0)}%</div>`
+  ).join('');
+
+  return `<div style="margin-bottom:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:12px;font-weight:700;color:#444">${label}</span>
+      <span style="font-size:12px;color:#666">Виручка: <b>${fmt(income)}</b></span>
+    </div>
+    <div style="position:relative;height:48px;border-radius:8px;overflow:hidden;display:flex;cursor:default">
+      ${bars}${profitBar}
+      ${labels}
+    </div>
+  </div>`;
+}
+
 async function loadDashboard() {
   const [incomes, expenses, purchases] = await Promise.all([
     api('/incomes'), api('/expenses'), api('/purchases')
@@ -385,6 +470,50 @@ async function loadDashboard() {
   document.getElementById('d-expense').textContent = fmt(totalExpense);
   document.getElementById('d-purchase').textContent = fmt(totalPurchase);
   document.getElementById('d-profit').textContent = fmt(profit);
+
+  // --- Діаграма розподілу ---
+  const now = new Date();
+  const yearFrom = `${now.getFullYear()}-01-01`;
+  const yearTo   = `${now.getFullYear()}-12-31`;
+  const monthFrom = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  const lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const monthTo = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${lastDay}`;
+  const [weekMon, weekSun] = getWeekBounds();
+  const weekFrom = weekMon.toISOString().slice(0,10);
+  const weekTo   = weekSun.toISOString().slice(0,10);
+
+  const monthNames = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+  const weekLabel = `Поточний тиждень (${weekMon.getDate()}–${weekSun.getDate()} ${monthNames[weekSun.getMonth()]})`;
+
+  const dYear  = buildDistData(incomes, expenses, purchases, yearFrom, yearTo);
+  const dMonth = buildDistData(incomes, expenses, purchases, monthFrom, monthTo);
+  const dWeek  = buildDistData(incomes, expenses, purchases, weekFrom, weekTo);
+
+  // Збираємо всі унікальні категорії для єдиної легенди і кольорів
+  const allCats = new Set();
+  [dYear, dMonth, dWeek].forEach(d => d && Object.keys(d.cats).forEach(c => allCats.add(c)));
+  const colorMap = {};
+  [...allCats].forEach((c, i) => colorMap[c] = DIST_COLORS[i % DIST_COLORS.length]);
+
+  const monthUa = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+
+  document.getElementById('dist-chart').innerHTML =
+    renderDistRow(`Поточний рік ${now.getFullYear()}`, dYear, colorMap) +
+    renderDistRow(`Поточний місяць (${monthUa[now.getMonth()]})`, dMonth, colorMap) +
+    renderDistRow(weekLabel, dWeek, colorMap);
+
+  // Легенда
+  const legendItems = [...allCats].map(c =>
+    `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
+      <div style="width:12px;height:12px;border-radius:3px;background:${colorMap[c]};flex-shrink:0"></div>${c}
+    </div>`
+  ).join('');
+  document.getElementById('dist-legend').innerHTML = legendItems +
+    `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
+      <div style="width:12px;height:12px;border-radius:3px;background:${PROFIT_COLOR};flex-shrink:0"></div>Прибуток
+    </div>`;
+
+  // --- Останні операції ---
   const recent = [
     ...incomes.slice(0,5).map(r => ({date: r.date, type: r.type, amount: +r.amount, desc: r.description, cls: 'badge-income'})),
     ...expenses.slice(0,5).map(r => ({date: r.date, type: r.category, amount: -r.amount, desc: r.description, cls: 'badge-expense'}))
