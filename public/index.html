@@ -492,8 +492,8 @@ async function loadIncomes() {
   const to = document.getElementById('i-filter-to')?.value || '';
   const type = document.getElementById('i-filter-type')?.value || '';
   let data = await api('/incomes');
-  if (from) data = data.filter(r => r.date >= from);
-  if (to) data = data.filter(r => r.date <= to);
+  if (from) data = data.filter(r => r.date.slice(0, 10) >= from);
+  if (to) data = data.filter(r => r.date.slice(0, 10) <= to);
   if (type) data = data.filter(r => r.type === type);
   if (incomeSortAsc) {
     data = data.slice().sort((a, b) => {
@@ -548,8 +548,8 @@ async function loadExpenses() {
   const to = document.getElementById('e-filter-to')?.value || '';
   const cat = document.getElementById('e-filter-cat')?.value || '';
   let data = await api('/expenses');
-  if (from) data = data.filter(r => r.date >= from);
-  if (to) data = data.filter(r => r.date <= to);
+  if (from) data = data.filter(r => r.date.slice(0, 10) >= from);
+  if (to) data = data.filter(r => r.date.slice(0, 10) <= to);
   if (cat) data = data.filter(r => r.category === cat);
   if (expenseSortAsc) {
     data = data.slice().sort((a, b) => {
