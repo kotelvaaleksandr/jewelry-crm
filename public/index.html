@@ -578,16 +578,22 @@ async function loadIncomeTypes() {
 }
 
 async function loadExpenseCategories() {
-  expenseCategories = await api('/expense-categories');
+  const [cats, regExp] = await Promise.all([api('/expense-categories'), api('/regular-expenses')]);
+  expenseCategories = cats;
+  // Додаємо назви регулярних витрат яких ще немає серед категорій
+  const catNames = new Set(cats.map(c => c.name));
+  const regNames = (regExp || []).map(r => r.name).filter(n => !catNames.has(n));
+  const allOptions = cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('') +
+    (regNames.length ? '<optgroup label="— Регулярні витрати —">' + regNames.map(n => `<option value="${n}">${n}</option>`).join('') + '</optgroup>' : '');
+
   const filterSel = document.getElementById('e-filter-cat');
   const cur = filterSel.value;
-  filterSel.innerHTML = '<option value="">Всі</option>' +
-    expenseCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  filterSel.innerHTML = '<option value="">Всі</option>' + allOptions;
   filterSel.value = cur;
   const addSel = document.getElementById('e-cat');
   if (addSel) {
     const cur2 = addSel.value;
-    addSel.innerHTML = expenseCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    addSel.innerHTML = allOptions;
     addSel.value = cur2;
   }
   renderTypeManagerList('expense');
