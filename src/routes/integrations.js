@@ -8,7 +8,7 @@ const router = express.Router();
 function httpsGet(url, headers) {
   return new Promise((resolve, reject) => {
     const opts = new URL(url);
-    https.get({ hostname: opts.hostname, path: opts.pathname, headers }, res => {
+    https.get({ hostname: opts.hostname, path: opts.pathname + (opts.search || ''), headers }, res => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
@@ -61,6 +61,85 @@ router.post('/:provider', auth, async (req, res) => {
       [req.userId, provider, token, account_id || null]
     );
     res.json(result.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ПриватБанк — отримати список рахунків
+router.post('/privatbank/accounts', auth, async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: 'Токен відсутній' });
+  try {
+    const data = await httpsGet('https://acp.privatbank.ua/api/statements/accounts', {
+      'token': token,
+      'Content-Type': 'application/json'
+    });
+    if (data.status !== 'OK') return res.status(400).json({ error: data.message || 'Помилка API ПриватБанку' });
+    const accounts = (data.data || []).map(a => ({
+      id: a.acc,
+      iban: a.acc,
+      currency: a.currency,
+      balance: a.balance,
+      name: a.name || a.acc
+    }));
+    res.json({ accounts });
+  } catch (e) {
+    res.status(500).json({ error: 'Помилка підключення до ПриватБанку: ' + e.message });
+  }
+});
+
+// ПриватБанк — синхронізація транзакцій
+router.post('/privatbank/sync', auth, async (req, res) => {
+  try {
+    const intResult = await pool.query(
+      'SELECT token, account_id FROM integrations WHERE user_id=$1 AND provider=$2 AND enabled=true',
+      [req.userId, 'privatbank']
+    );
+    if (!intResult.rows.length) return res.status(400).json({ error: 'ПриватБанк не підключено' });
+    const { token, account_id } = intResult.rows[0];
+
+    const now = new Date();
+    const from = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const fmtD = d => `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+
+    const url = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=100`;
+    const data = await httpsGet(url, { 'token': token, 'Content-Type': 'application/json' });
+
+    if (data.status !== 'OK') return res.status(400).json({ error: data.message || 'Помилка API ПриватБанку' });
+
+    let added = 0;
+    for (const tx of (data.data || [])) {
+      const amount = parseFloat(tx.BPL_SUM || 0);
+      const isIncome = tx.BPL_DEBET_CREDIT === 'C';
+      const dateParts = (tx.BPL_DAT_OD || '').split('-');
+      const txDate = dateParts.length === 3
+        ? new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${tx.BPL_TIME || '00:00:00'}`)
+        : new Date();
+      const date = txDate.toISOString().split('T')[0];
+      const description = tx.BPL_OSND || '';
+      const txId = 'privat_' + (tx.BPL_NUM_DOC || tx.BPL_DAT_OD + '_' + amount);
+
+      if (isIncome) {
+        await pool.query(
+          `INSERT INTO incomes (user_id, amount, type, source, description, date, transaction_time, bank_tx_id)
+           VALUES ($1,$2,'Некласифіковано','ПриватБанк',$3,$4,$5,$6)
+           ON CONFLICT (bank_tx_id) DO NOTHING`,
+          [req.userId, amount, description, date, txDate, txId]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO expenses (user_id, amount, category, source, description, date, transaction_time, bank_tx_id)
+           VALUES ($1,$2,'Некласифіковано','ПриватБанк',$3,$4,$5,$6)
+           ON CONFLICT (bank_tx_id) DO NOTHING`,
+          [req.userId, amount, description, date, txDate, txId]
+        );
+      }
+      added++;
+    }
+
+    await pool.query('UPDATE integrations SET last_sync=NOW() WHERE user_id=$1 AND provider=$2', [req.userId, 'privatbank']);
+    res.json({ success: true, synced: added });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

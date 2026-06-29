@@ -263,15 +263,26 @@
           <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">API токен</label>
           <div style="display:flex;gap:8px">
             <input type="password" id="privat-token" placeholder="Токен з Приват24 для бізнесу" style="flex:1">
-            <button class="btn" onclick="saveIntegration('privatbank')">Підключити</button>
+            <button class="btn" onclick="loadPrivatAccounts()">Далі →</button>
           </div>
-          <p style="font-size:12px;color:#999;margin-top:6px">Приват24 для бізнесу → API → Згенерувати токен</p>
+          <p style="font-size:12px;color:#999;margin-top:6px">Приват24 для бізнесу → Налаштування → API → Згенерувати токен</p>
+          <div id="privat-accounts" style="display:none;margin-top:14px">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Оберіть рахунок:</label>
+            <div id="privat-accounts-list"></div>
+          </div>
         </div>
         <div id="privat-connected" style="display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:13px;color:#059669;font-weight:600">✓ Підключено</span>
-            <button class="btn btn-red" onclick="removeIntegration('privatbank')" style="padding:6px 12px;font-size:12px">Відключити</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div>
+              <span style="font-size:13px;color:#059669;font-weight:600">✓ Підключено</span>
+              <span id="privat-account-name" style="font-size:12px;color:#666;margin-left:8px"></span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" onclick="syncPrivatbank()" style="padding:6px 14px;font-size:12px;background:#059669">↻ Синхронізувати</button>
+              <button class="btn btn-red" onclick="removeIntegration('privatbank')" style="padding:6px 12px;font-size:12px">Відключити</button>
+            </div>
           </div>
+          <div id="privat-sync-result" style="font-size:12px;color:#666;margin-top:8px"></div>
         </div>
       </div>
 
@@ -673,6 +684,11 @@ async function loadIntegrations() {
   if (mono && mono.last_sync) {
     document.getElementById('mono-sync-result').textContent = 'Остання синхронізація: ' + new Date(mono.last_sync).toLocaleString('uk-UA');
   }
+  const privat = data.find(r => r.provider === 'privatbank' && r.enabled);
+  if (privat) {
+    if (privat.account_id) document.getElementById('privat-account-name').textContent = '· ' + privat.account_id;
+    if (privat.last_sync) document.getElementById('privat-sync-result').textContent = 'Остання синхронізація: ' + new Date(privat.last_sync).toLocaleString('uk-UA');
+  }
 }
 
 async function loadMonoAccounts() {
@@ -742,6 +758,72 @@ async function syncMonobank() {
   }
 }
 
+async function loadPrivatAccounts() {
+  const tokenVal = document.getElementById('privat-token').value.trim();
+  if (!tokenVal) return alert('Введіть токен');
+  const btn = event.target;
+  btn.textContent = '...';
+  btn.disabled = true;
+  const res = await api('/integrations/privatbank/accounts', 'POST', { token: tokenVal });
+  btn.textContent = 'Далі →';
+  btn.disabled = false;
+  if (res.error) return alert('Помилка: ' + res.error);
+  document.getElementById('privat-accounts').style.display = 'block';
+  document.getElementById('privat-accounts-list').innerHTML = res.accounts.map(a =>
+    `<div onclick="selectPrivatAccount('${a.id}','${a.name} ${a.currency}', this)" style="padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:8px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:600;font-size:13px">${a.name} · ${a.currency}</div>
+        <div style="font-size:11px;color:#999">${a.iban}</div>
+      </div>
+      <div style="font-weight:700;font-size:14px">${Number(a.balance).toLocaleString('uk-UA')} ${a.currency}</div>
+    </div>`
+  ).join('');
+}
+
+let selectedPrivatAccountId = null;
+
+function selectPrivatAccount(id, name, el) {
+  selectedPrivatAccountId = id;
+  document.querySelectorAll('#privat-accounts-list > div').forEach(d => d.style.border = '1.5px solid #e0e0e0');
+  el.style.border = '2px solid #009900';
+  if (!document.getElementById('privat-save-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'privat-save-btn';
+    btn.className = 'btn';
+    btn.style = 'margin-top:10px;width:100%;background:#009900';
+    btn.textContent = 'Підключити цей рахунок';
+    btn.onclick = () => savePrivatIntegration(name);
+    document.getElementById('privat-accounts').appendChild(btn);
+  }
+}
+
+async function savePrivatIntegration(accountName) {
+  const tokenVal = document.getElementById('privat-token').value.trim();
+  const res = await api('/integrations/privatbank', 'POST', { token: tokenVal, account_id: selectedPrivatAccountId });
+  if (res && res.id) {
+    document.getElementById('privat-form').style.display = 'none';
+    document.getElementById('privat-connected').style.display = 'block';
+    document.getElementById('privat-account-name').textContent = '· ' + accountName;
+    document.getElementById('privat-accounts').style.display = 'none';
+  } else {
+    alert('Помилка збереження');
+  }
+}
+
+async function syncPrivatbank() {
+  const btn = event.target;
+  btn.textContent = 'Синхронізація...';
+  btn.disabled = true;
+  const res = await api('/integrations/privatbank/sync', 'POST');
+  btn.textContent = '↻ Синхронізувати';
+  btn.disabled = false;
+  if (res.error) {
+    document.getElementById('privat-sync-result').textContent = 'Помилка: ' + res.error;
+  } else {
+    document.getElementById('privat-sync-result').textContent = `Синхронізовано ${res.synced} транзакцій · ${new Date().toLocaleString('uk-UA')}`;
+  }
+}
+
 async function saveIntegration(provider) {
   const els = providerMap[provider];
   const token_val = document.getElementById(els.input).value.trim();
@@ -765,6 +847,12 @@ async function removeIntegration(provider) {
     document.getElementById('mono-accounts').style.display = 'none';
     selectedMonoAccountId = null;
     const saveBtn = document.getElementById('mono-save-btn');
+    if (saveBtn) saveBtn.remove();
+  }
+  if (provider === 'privatbank') {
+    document.getElementById('privat-accounts').style.display = 'none';
+    selectedPrivatAccountId = null;
+    const saveBtn = document.getElementById('privat-save-btn');
     if (saveBtn) saveBtn.remove();
   }
 }
