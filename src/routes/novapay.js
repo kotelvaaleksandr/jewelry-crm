@@ -246,9 +246,14 @@ router.post('/sync', auth, async (req, res) => {
       const description = doc.Purpose || '';
       const txId = 'novapay_' + (doc.Code || date + '_' + amount);
       const isInternal = matchesKeywords(description, keywords);
+      const isNovapayInvoice = description.toLowerCase().includes('переказ коштів по платежам, прийнятим від населення');
+      let incomeType = 'Некласифіковано';
+      if (isInternal) incomeType = 'Внутрішній переказ';
+      else if (isNovapayInvoice) incomeType = 'Наложений платіж';
+
       if (isIncome) {
         await pool.query(`INSERT INTO incomes (user_id,amount,type,source,description,date,transaction_time,bank_tx_id) VALUES ($1,$2,$3,'NovaPay',$4,$5,$6,$7) ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]);
+          [req.userId, amount, incomeType, description, date, txDate, txId]);
       } else {
         await pool.query(`INSERT INTO expenses (user_id,amount,category,source,description,date,transaction_time,bank_tx_id) VALUES ($1,$2,$3,'NovaPay',$4,$5,$6,$7) ON CONFLICT (bank_tx_id) DO NOTHING`,
           [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]);
@@ -259,6 +264,22 @@ router.post('/sync', auth, async (req, res) => {
     res.json({ success: true, synced: added });
   } catch (e) {
     console.error('NovaPay sync error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Перекласифікувати існуючі NovaPay доходи як "Наложений платіж"
+router.post('/reclassify', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE incomes SET type='Наложений платіж'
+       WHERE user_id=$1 AND source='NovaPay'
+         AND type IS DISTINCT FROM 'Внутрішній переказ'
+         AND description ILIKE '%переказ коштів по платежам, прийнятим від населення%'`,
+      [req.userId]
+    );
+    res.json({ updated: result.rowCount || 0 });
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });

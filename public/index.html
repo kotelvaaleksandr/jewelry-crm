@@ -401,6 +401,10 @@
               <button class="btn btn-red" onclick="removeIntegration('novapay')" style="padding:6px 12px;font-size:12px">Відключити</button>
             </div>
           </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0">
+            <button class="btn" onclick="reclassifyNovaPay()" style="padding:5px 14px;font-size:12px;background:#6c757d">Присвоїти «Наложений платіж» існуючим</button>
+            <span id="novapay-reclassify-msg" style="font-size:12px;color:#666;margin-left:10px"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -1248,6 +1252,21 @@ async function syncNovaPay() {
     if (res.error) { msg.style.color='#dc2626'; msg.textContent=res.error; return; }
     msg.style.color='#059669'; msg.textContent='✓ Додано: '+res.synced+' транзакцій';
   } catch(e) { msg.style.color='#dc2626'; msg.textContent='Помилка: '+e.message; }
+}
+
+async function reclassifyNovaPay() {
+  const msg = document.getElementById('novapay-reclassify-msg');
+  msg.style.color = '#666';
+  msg.textContent = 'Перекласифікую...';
+  const res = await api('/integrations/novapay/reclassify', 'POST', {});
+  if (res && res.updated !== undefined) {
+    msg.style.color = '#059669';
+    msg.textContent = `✓ Оновлено ${res.updated} транзакцій`;
+  } else {
+    msg.style.color = '#dc3545';
+    msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
 }
 
 async function loadMonoAccounts() {
