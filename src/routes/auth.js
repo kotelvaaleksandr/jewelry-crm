@@ -105,12 +105,12 @@ router.post('/apply-keywords', auth, async (req, res) => {
 
     const incResult = await pool.query(
       `UPDATE incomes SET type='Внутрішній переказ'
-       WHERE user_id=$1 AND type != 'Внутрішній переказ' AND (${likeConditions})`,
+       WHERE user_id=$1 AND type IS DISTINCT FROM 'Внутрішній переказ' AND (${likeConditions})`,
       [req.userId, ...likeParams]
     );
     const expResult = await pool.query(
       `UPDATE expenses SET category='Внутрішній переказ'
-       WHERE user_id=$1 AND category != 'Внутрішній переказ' AND (${likeConditions})`,
+       WHERE user_id=$1 AND category IS DISTINCT FROM 'Внутрішній переказ' AND (${likeConditions})`,
       [req.userId, ...likeParams]
     );
 
