@@ -1130,15 +1130,19 @@ async function saveKeywords() {
 
 async function applyKeywords() {
   const msg = document.getElementById('keywords-msg');
+  const keywords = document.getElementById('internal-keywords-input').value.trim();
   msg.style.color = '#666';
-  msg.textContent = 'Перекласифікую...';
+  msg.textContent = 'Зберігаю та перекласифікую...';
+  // Спочатку зберігаємо актуальні ключові слова
+  await api('/auth/keywords', 'PUT', { keywords });
+  // Потім застосовуємо до існуючих транзакцій
   const res = await api('/auth/apply-keywords', 'POST', {});
   if (res && res.updated !== undefined) {
     msg.style.color = '#059669';
     msg.textContent = `✓ Оновлено ${res.updated} транзакцій`;
   } else {
     msg.style.color = '#dc3545';
-    msg.textContent = 'Помилка';
+    msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';
   }
   setTimeout(() => { msg.textContent = ''; }, 4000);
 }
