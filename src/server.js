@@ -50,6 +50,27 @@ require('./db').query(`
     pay_date DATE,
     created_at TIMESTAMP DEFAULT NOW()
   );
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'none',
+    amount NUMERIC(10,2) NOT NULL DEFAULT 299,
+    order_id VARCHAR(100),
+    rectoken VARCHAR(255),
+    next_billing_date DATE,
+    last_payment_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  );
+  CREATE TABLE IF NOT EXISTS payment_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    order_id VARCHAR(100),
+    status VARCHAR(30),
+    amount NUMERIC(10,2),
+    raw_data JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
 `).catch(e => console.error('Auto-migration error:', e.message));
 
 const app = express();
@@ -57,11 +78,18 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/finances'));
 app.use('/api/integrations', require('./routes/integrations'));
+app.use('/api/payment', require('./routes/payment'));
+
+// Щоденна перевірка підписок на списання (раз на годину)
+setInterval(() => {
+  require('./routes/payment').runBillingCheck().catch(e => console.error('Billing check error:', e.message));
+}, 60 * 60 * 1000);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Jewelry CRM працює' });

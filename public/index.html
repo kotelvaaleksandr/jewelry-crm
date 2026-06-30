@@ -1538,19 +1538,15 @@ function loadCabinetTab(tab) {
       + faqItem('Підтримка', 'З питаннями пишіть на: <a href="mailto:support@jewelrycrm.ua" style="color:#6366f1">support@jewelrycrm.ua</a>')
       + '</div>';
   } else if (tab === 'payment') {
-    content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Оплата та тариф</h3>'
-      + '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;margin-bottom:20px">'
-      + '<div style="font-size:13px;color:#16a34a;font-weight:700;margin-bottom:4px">✓ Активний тариф</div>'
-      + '<div style="font-size:22px;font-weight:800;color:#1a1a1a;margin-bottom:4px">Базовий</div>'
-      + '<div style="font-size:13px;color:#888">Безкоштовно на період тестування</div>'
-      + '</div>'
-      + '<div style="display:flex;flex-direction:column;gap:10px">'
+    content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Оплата та тариф</h3><div id="payment-status-box">Завантаження...</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">'
       + planFeature('✓', 'Синхронізація з банками (Monobank, ПриватБанк)')
       + planFeature('✓', 'Доходи, витрати, закупівлі')
       + planFeature('✓', 'Дашборд та аналітика')
       + planFeature('✓', 'Планові показники')
       + planFeature('✓', 'Регулярні витрати')
       + '</div>';
+    loadPaymentStatus();
   } else if (tab === 'security') {
     const loginDate = new Date().toLocaleDateString('uk-UA', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
     content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Безпека</h3>'
@@ -1601,6 +1597,66 @@ function formatPhone(inp) {
   if (digits.length >= 8) result += '-';
   if (digits.length >= 9) result += digits.slice(8, 10);
   inp.value = result;
+}
+async function loadPaymentStatus() {
+  const box = document.getElementById('payment-status-box');
+  try {
+    const sub = await api('/payment/status');
+    const status = sub.status || 'none';
+    if (status === 'active') {
+      const next = sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString('uk-UA') : '—';
+      box.innerHTML = '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px">'
+        + '<div style="font-size:13px;color:#16a34a;font-weight:700;margin-bottom:4px">✓ Підписка активна</div>'
+        + '<div style="font-size:22px;font-weight:800;color:#1a1a1a;margin-bottom:4px">' + sub.amount + ' ₴/міс</div>'
+        + '<div style="font-size:13px;color:#888">Наступне списання: ' + next + '</div>'
+        + '<button onclick="cancelSubscription()" style="margin-top:14px;background:#fee2e2;color:#dc2626;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Відмінити підписку</button>'
+        + '</div>';
+    } else if (status === 'pending') {
+      box.innerHTML = '<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:20px">'
+        + '<div style="font-size:13px;color:#92400e;font-weight:700">⏳ Очікується підтвердження оплати</div>'
+        + '<div style="font-size:13px;color:#888;margin-top:6px">Якщо оплата не пройшла — спробуйте ще раз</div>'
+        + '<button onclick="startSubscription()" style="margin-top:14px;background:#6366f1;color:#fff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Спробувати ще раз</button>'
+        + '</div>';
+    } else {
+      box.innerHTML = '<div style="background:#f8f9fa;border:1.5px solid #e0e0e0;border-radius:12px;padding:20px">'
+        + '<div style="font-size:13px;color:#888;font-weight:700;margin-bottom:4px">Тариф не активовано</div>'
+        + '<div style="font-size:22px;font-weight:800;color:#1a1a1a;margin-bottom:10px">299 ₴ / місяць</div>'
+        + '<div style="font-size:13px;color:#888;margin-bottom:14px">Автоматичне щомісячне списання з картки. Скасувати можна будь-коли.</div>'
+        + '<button id="subscribe-btn" onclick="startSubscription()" style="background:#6366f1;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Оплатити та підписатись</button>'
+        + '</div>';
+    }
+  } catch(e) {
+    box.innerHTML = '<div style="color:#dc2626;font-size:13px">Помилка завантаження: ' + e.message + '</div>';
+  }
+}
+async function startSubscription() {
+  const btn = document.getElementById('subscribe-btn');
+  if (btn) { btn.textContent = 'Зачекайте...'; btn.disabled = true; }
+  try {
+    const res = await api('/payment/liqpay/checkout', 'POST', {});
+    if (res.error) { alert(res.error); if (btn) { btn.textContent = 'Оплатити та підписатись'; btn.disabled = false; } return; }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = res.checkout_url;
+    form.target = '_blank';
+    form.innerHTML = '<input type="hidden" name="data" value="' + res.data + '"><input type="hidden" name="signature" value="' + res.signature + '">';
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+    if (btn) { btn.textContent = 'Оплатити та підписатись'; btn.disabled = false; }
+  } catch(e) {
+    alert('Помилка: ' + e.message);
+    if (btn) { btn.textContent = 'Оплатити та підписатись'; btn.disabled = false; }
+  }
+}
+async function cancelSubscription() {
+  if (!confirm('Відмінити підписку? Наступні списання не відбудуться.')) return;
+  try {
+    await api('/payment/cancel', 'POST', {});
+    loadPaymentStatus();
+  } catch(e) {
+    alert('Помилка: ' + e.message);
+  }
 }
 function passField(id, label) {
   return '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">' + label + '</label>'
