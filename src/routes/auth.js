@@ -42,6 +42,12 @@ router.post('/login', async (req, res) => {
 
 const auth = require('../middleware/auth');
 
+function matchesKeywords(description, keywords) {
+  if (!description || !keywords.length) return false;
+  const lower = description.toLowerCase();
+  return keywords.some(k => lower.includes(k));
+}
+
 router.put('/profile', auth, async (req, res) => {
   const { company_name, last_name, first_name, phone, old_password, new_password } = req.body;
   try {
@@ -57,6 +63,54 @@ router.put('/profile', auth, async (req, res) => {
       [company_name, last_name || null, first_name || null, phone || null, req.userId]
     );
     res.json(result.rows[0]);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/keywords', auth, async (req, res) => {
+  const r = await pool.query('SELECT internal_keywords FROM users WHERE id=$1', [req.userId]);
+  res.json({ keywords: r.rows[0]?.internal_keywords || '' });
+});
+
+router.put('/keywords', auth, async (req, res) => {
+  const { keywords } = req.body;
+  await pool.query('UPDATE users SET internal_keywords=$1 WHERE id=$2', [keywords || '', req.userId]);
+  res.json({ success: true });
+});
+
+// Перекласифікувати існуючі транзакції за ключовими словами
+router.post('/apply-keywords', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT internal_keywords FROM users WHERE id=$1', [req.userId]);
+    const raw = r.rows[0]?.internal_keywords || '';
+    const keywords = raw.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+    if (!keywords.length) return res.json({ updated: 0 });
+
+    let updated = 0;
+    // Доходи: type != 'Внутрішній переказ' і опис містить ключове слово
+    const incomes = await pool.query(
+      `SELECT id, description FROM incomes WHERE user_id=$1 AND type != 'Внутрішній переказ'`,
+      [req.userId]
+    );
+    for (const row of incomes.rows) {
+      if (matchesKeywords(row.description, keywords)) {
+        await pool.query(`UPDATE incomes SET type='Внутрішній переказ' WHERE id=$1`, [row.id]);
+        updated++;
+      }
+    }
+    // Витрати: category != 'Внутрішній переказ'
+    const expenses = await pool.query(
+      `SELECT id, description FROM expenses WHERE user_id=$1 AND category != 'Внутрішній переказ'`,
+      [req.userId]
+    );
+    for (const row of expenses.rows) {
+      if (matchesKeywords(row.description, keywords)) {
+        await pool.query(`UPDATE expenses SET category='Внутрішній переказ' WHERE id=$1`, [row.id]);
+        updated++;
+      }
+    }
+    res.json({ updated });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }

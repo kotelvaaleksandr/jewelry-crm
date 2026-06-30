@@ -2,6 +2,7 @@ const express = require('express');
 const https = require('https');
 const pool = require('../db');
 const auth = require('../middleware/auth');
+const { getUserKeywords, matchesKeywords } = require('../helpers/keywords');
 
 const router = express.Router();
 
@@ -125,12 +126,11 @@ router.post('/privatbank/sync', auth, async (req, res) => {
       nextPageId = nextData.exist_next_page ? nextData.next_page_id : null;
     }
 
+    const keywords = await getUserKeywords(req.userId);
     let added = 0;
     for (const tx of allTx) {
       const amount = parseFloat(tx.SUM || 0);
-      // TRANTYPE: 'C' = credit = дохід, 'D' = debit = витрата
       const isIncome = tx.TRANTYPE === 'C';
-      // Дата: DAT_OD формат DD.MM.YYYY, час TIM_P формат HH:MM
       let txDate;
       try {
         if (tx.DAT_OD) {
@@ -145,20 +145,21 @@ router.post('/privatbank/sync', auth, async (req, res) => {
       const date = txDate.toISOString().split('T')[0];
       const description = tx.OSND || tx.AUT_CNTR_NAM || '';
       const txId = 'privat_' + (tx.TECHNICAL_TRANSACTION_ID || tx.REF || (date + '_' + amount));
+      const isInternal = matchesKeywords(description, keywords);
 
       if (isIncome) {
         await pool.query(
           `INSERT INTO incomes (user_id, amount, type, source, description, date, transaction_time, bank_tx_id)
-           VALUES ($1,$2,'Некласифіковано','ПриватБанк',$3,$4,$5,$6)
+           VALUES ($1,$2,$3,'ПриватБанк',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, description, date, txDate, txId]
+          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]
         );
       } else {
         await pool.query(
           `INSERT INTO expenses (user_id, amount, category, source, description, date, transaction_time, bank_tx_id)
-           VALUES ($1,$2,'Некласифіковано','ПриватБанк',$3,$4,$5,$6)
+           VALUES ($1,$2,$3,'ПриватБанк',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, description, date, txDate, txId]
+          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]
         );
       }
       added++;
@@ -188,25 +189,27 @@ router.post('/monobank/sync', auth, async (req, res) => {
 
     if (!Array.isArray(data)) return res.status(400).json({ error: data.errorDescription || 'Помилка API' });
 
+    const keywords = await getUserKeywords(req.userId);
     let added = 0;
     for (const tx of data) {
       const amount = tx.amount / 100;
       const txDate = new Date(tx.time * 1000);
       const date = txDate.toISOString().split('T')[0];
       const description = tx.description || '';
+      const isInternal = matchesKeywords(description, keywords);
       if (amount > 0) {
         await pool.query(
           `INSERT INTO incomes (user_id, amount, type, source, description, date, transaction_time, bank_tx_id)
-           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5,$6)
+           VALUES ($1,$2,$3,'Monobank',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, description, date, txDate, tx.id]
+          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, tx.id]
         );
       } else {
         await pool.query(
           `INSERT INTO expenses (user_id, amount, category, source, description, date, transaction_time, bank_tx_id)
-           VALUES ($1,$2,'Некласифіковано','Monobank',$3,$4,$5,$6)
+           VALUES ($1,$2,$3,'Monobank',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, Math.abs(amount), description, date, txDate, tx.id]
+          [req.userId, Math.abs(amount), isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, tx.id]
         );
       }
       added++;

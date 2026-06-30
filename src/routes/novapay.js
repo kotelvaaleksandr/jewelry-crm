@@ -3,6 +3,7 @@ const https = require('https');
 const xml2js = require('xml2js');
 const pool = require('../db');
 const auth = require('../middleware/auth');
+const { getUserKeywords, matchesKeywords } = require('../helpers/keywords');
 
 const router = express.Router();
 
@@ -233,6 +234,7 @@ router.post('/sync', auth, async (req, res) => {
     if (!Array.isArray(docs)) docs = docs ? [docs] : [];
 
     const conducted = docs.filter(d => d.StatusDocumentId === '8' || d.StatusDocumentId === '9');
+    const keywords = await getUserKeywords(req.userId);
     let added = 0;
     for (const doc of conducted) {
       const amount = parseFloat(doc?.$ ?.Amount || doc.Amount || 0);
@@ -243,12 +245,13 @@ router.post('/sync', auth, async (req, res) => {
       const date = txDate.toISOString().split('T')[0];
       const description = doc.Purpose || '';
       const txId = 'novapay_' + (doc.Code || date + '_' + amount);
+      const isInternal = matchesKeywords(description, keywords);
       if (isIncome) {
-        await pool.query(`INSERT INTO incomes (user_id,amount,type,source,description,date,transaction_time,bank_tx_id) VALUES ($1,$2,'Некласифіковано','NovaPay',$3,$4,$5,$6) ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, description, date, txDate, txId]);
+        await pool.query(`INSERT INTO incomes (user_id,amount,type,source,description,date,transaction_time,bank_tx_id) VALUES ($1,$2,$3,'NovaPay',$4,$5,$6,$7) ON CONFLICT (bank_tx_id) DO NOTHING`,
+          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]);
       } else {
-        await pool.query(`INSERT INTO expenses (user_id,amount,category,source,description,date,transaction_time,bank_tx_id) VALUES ($1,$2,'Некласифіковано','NovaPay',$3,$4,$5,$6) ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, description, date, txDate, txId]);
+        await pool.query(`INSERT INTO expenses (user_id,amount,category,source,description,date,transaction_time,bank_tx_id) VALUES ($1,$2,$3,'NovaPay',$4,$5,$6,$7) ON CONFLICT (bank_tx_id) DO NOTHING`,
+          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]);
       }
       added++;
     }

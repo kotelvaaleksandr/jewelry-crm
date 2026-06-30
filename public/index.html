@@ -405,6 +405,24 @@
       </div>
     </div>
 
+    <!-- Внутрішні перекази — ключові слова -->
+    <div class="card" style="margin-top:20px">
+      <h2 style="margin-bottom:6px">Внутрішні перекази</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:16px">Якщо опис транзакції містить одне з цих слів — вона автоматично отримає категорію «Внутрішній переказ» і не враховуватиметься в статистиці.</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:6px">Ключові слова (через кому)</label>
+          <input type="text" id="internal-keywords-input" placeholder="наприклад: котельва, власний рахунок, переказ між рр" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
+          <div style="font-size:11px;color:#999;margin-top:4px">Регістр не важливий. Наприклад: «Котельва» знайде і «КОТЕЛЬВА О.А.», і «Від: ФОП Котельва»</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn" onclick="saveKeywords()" style="padding:8px 20px">Зберегти</button>
+          <button class="btn" onclick="applyKeywords()" style="padding:8px 20px;background:#6c757d">Перекласифікувати існуючі</button>
+          <span id="keywords-msg" style="font-size:13px;color:#666"></span>
+        </div>
+      </div>
+    </div>
+
     <!-- Регулярні витрати -->
     <div class="card" style="margin-top:20px">
       <h2 style="margin-bottom:16px">Регулярні витрати</h2>
@@ -491,7 +509,7 @@ function showTab(name) {
   if (name === 'expenses') loadExpenseCategories().then(loadExpenses);
   if (name === 'purchases') loadPurchases();
   if (name === 'plan') loadPlan();
-  if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); }
+  if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); loadKeywords(); }
 }
 
 async function api(path, method = 'GET', body) {
@@ -602,9 +620,13 @@ function renderDistRow(label, data, colorMap) {
 }
 
 async function loadDashboard() {
-  const [incomes, expenses, purchases] = await Promise.all([
+  let [incomes, expenses, purchases] = await Promise.all([
     api('/incomes'), api('/expenses'), api('/purchases')
   ]);
+  // Виключаємо внутрішні перекази з усіх підрахунків
+  incomes  = incomes.filter(r => r.type !== 'Внутрішній переказ');
+  expenses = expenses.filter(r => r.category !== 'Внутрішній переказ');
+
   const totalIncome = incomes.reduce((s, r) => s + +r.amount, 0);
   const totalExpense = expenses.reduce((s, r) => s + +r.amount, 0);
   const totalPurchase = purchases.reduce((s, r) => s + +r.amount, 0);
@@ -1083,6 +1105,43 @@ const providerMap = {
   privatbank: { form: 'privat-form', connected: 'privat-connected', input: 'privat-token' },
   novapay: { form: 'novapay-form', connected: 'novapay-connected', input: 'novapay-token' }
 };
+
+async function loadKeywords() {
+  const data = await api('/auth/keywords');
+  if (data && data.keywords !== undefined) {
+    document.getElementById('internal-keywords-input').value = data.keywords;
+  }
+}
+
+async function saveKeywords() {
+  const keywords = document.getElementById('internal-keywords-input').value.trim();
+  const msg = document.getElementById('keywords-msg');
+  msg.textContent = 'Збереження...';
+  const res = await api('/auth/keywords', 'PUT', { keywords });
+  if (res && res.success) {
+    msg.style.color = '#059669';
+    msg.textContent = '✓ Збережено';
+  } else {
+    msg.style.color = '#dc3545';
+    msg.textContent = 'Помилка збереження';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 3000);
+}
+
+async function applyKeywords() {
+  const msg = document.getElementById('keywords-msg');
+  msg.style.color = '#666';
+  msg.textContent = 'Перекласифікую...';
+  const res = await api('/auth/apply-keywords', 'POST', {});
+  if (res && res.updated !== undefined) {
+    msg.style.color = '#059669';
+    msg.textContent = `✓ Оновлено ${res.updated} транзакцій`;
+  } else {
+    msg.style.color = '#dc3545';
+    msg.textContent = 'Помилка';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
+}
 
 async function loadIntegrations() {
   const data = await api('/integrations');
