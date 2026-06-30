@@ -1508,13 +1508,14 @@ function loadCabinetTab(tab) {
     content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Особисті дані</h3>'
       + '<div style="display:flex;flex-direction:column;gap:14px">'
       + '<div style="display:flex;gap:10px">'
+      + '<div style="display:flex;gap:10px">'
       + '<div style="flex:1"><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Прізвище</label>'
-      + '<input id="cab-lastname" type="text" value="' + (u.last_name || '') + '" placeholder="Коваленко" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box"></div>'
+      + '<input id="cab-lastname" type="text" value="' + (u.last_name || '') + '" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box"></div>'
       + '<div style="flex:1"><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Імʼя</label>'
-      + '<input id="cab-firstname" type="text" value="' + (u.first_name || '') + '" placeholder="Олексій" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box"></div>'
+      + '<input id="cab-firstname" type="text" value="' + (u.first_name || '') + '" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box"></div>'
       + '</div>'
       + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Телефон</label>'
-      + '<input id="cab-phone" type="tel" value="' + (u.phone || '') + '" placeholder="+38 (050) 000-00-00" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
+      + '<input id="cab-phone" type="tel" value="' + (u.phone || '') + '" oninput="formatPhone(this)" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
       + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Назва компанії</label>'
       + '<input id="cab-company" type="text" value="' + (u.company_name || '') + '" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
       + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Email</label>'
@@ -1582,6 +1583,25 @@ function loadCabinetTab(tab) {
       + '</div>'
       + '</div>';
   }
+}
+function formatPhone(inp) {
+  let digits = inp.value.replace(/\D/g, '');
+  if (digits.startsWith('380')) digits = digits.slice(2);
+  else if (digits.startsWith('38')) digits = digits.slice(2);
+  else if (digits.startsWith('0')) { /* ok */ }
+  digits = digits.slice(0, 10);
+  let result = '';
+  if (digits.length === 0) { inp.value = ''; return; }
+  result = '+38 ';
+  if (digits.length >= 1) result += '(';
+  if (digits.length >= 1) result += digits.slice(0, 3);
+  if (digits.length >= 3) result += ') ';
+  if (digits.length >= 4) result += digits.slice(3, 6);
+  if (digits.length >= 6) result += '-';
+  if (digits.length >= 7) result += digits.slice(6, 8);
+  if (digits.length >= 8) result += '-';
+  if (digits.length >= 9) result += digits.slice(8, 10);
+  inp.value = result;
 }
 function passField(id, label) {
   return '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">' + label + '</label>'
