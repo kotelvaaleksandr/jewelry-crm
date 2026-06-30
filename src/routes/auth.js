@@ -84,34 +84,41 @@ router.post('/apply-keywords', auth, async (req, res) => {
   try {
     const r = await pool.query('SELECT internal_keywords FROM users WHERE id=$1', [req.userId]);
     const raw = r.rows[0]?.internal_keywords || '';
-    const keywords = raw.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
-    if (!keywords.length) return res.json({ updated: 0 });
+    const keywords = raw.split(',').map(k => k.trim()).filter(Boolean);
+    console.log('apply-keywords: raw=', JSON.stringify(raw), 'keywords=', keywords);
+    if (!keywords.length) return res.json({ updated: 0, debug: 'no keywords' });
 
-    let updated = 0;
-    // Доходи: type != 'Внутрішній переказ' і опис містить ключове слово
-    const incomes = await pool.query(
-      `SELECT id, description FROM incomes WHERE user_id=$1 AND type != 'Внутрішній переказ'`,
-      [req.userId]
+    // Будуємо умову: description ILIKE '%keyword1%' OR description ILIKE '%keyword2%'
+    const likeConditions = keywords.map((_, i) => `description ILIKE $${i + 2}`).join(' OR ');
+    const likeParams = keywords.map(k => `%${k}%`);
+
+    // Debug: скільки записів знайдено
+    const debugInc = await pool.query(
+      `SELECT COUNT(*) as cnt FROM incomes WHERE user_id=$1 AND (${likeConditions})`,
+      [req.userId, ...likeParams]
     );
-    for (const row of incomes.rows) {
-      if (matchesKeywords(row.description, keywords)) {
-        await pool.query(`UPDATE incomes SET type='Внутрішній переказ' WHERE id=$1`, [row.id]);
-        updated++;
-      }
-    }
-    // Витрати: category != 'Внутрішній переказ'
-    const expenses = await pool.query(
-      `SELECT id, description FROM expenses WHERE user_id=$1 AND category != 'Внутрішній переказ'`,
-      [req.userId]
+    const debugExp = await pool.query(
+      `SELECT COUNT(*) as cnt FROM expenses WHERE user_id=$1 AND (${likeConditions})`,
+      [req.userId, ...likeParams]
     );
-    for (const row of expenses.rows) {
-      if (matchesKeywords(row.description, keywords)) {
-        await pool.query(`UPDATE expenses SET category='Внутрішній переказ' WHERE id=$1`, [row.id]);
-        updated++;
-      }
-    }
+    console.log('apply-keywords debug: incomes found=', debugInc.rows[0].cnt, 'expenses found=', debugExp.rows[0].cnt);
+
+    const incResult = await pool.query(
+      `UPDATE incomes SET type='Внутрішній переказ'
+       WHERE user_id=$1 AND type != 'Внутрішній переказ' AND (${likeConditions})`,
+      [req.userId, ...likeParams]
+    );
+    const expResult = await pool.query(
+      `UPDATE expenses SET category='Внутрішній переказ'
+       WHERE user_id=$1 AND category != 'Внутрішній переказ' AND (${likeConditions})`,
+      [req.userId, ...likeParams]
+    );
+
+    const updated = (incResult.rowCount || 0) + (expResult.rowCount || 0);
+    console.log('apply-keywords: updated incomes=', incResult.rowCount, 'expenses=', expResult.rowCount);
     res.json({ updated });
   } catch(e) {
+    console.error('apply-keywords error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
