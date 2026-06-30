@@ -75,7 +75,7 @@ router.post('/privatbank/accounts', auth, async (req, res) => {
     const data = await httpsGet('https://acp.privatbank.ua/api/statements/accounts', {
       'token': cleanToken,
       'Content-Type': 'application/json;charset=utf-8',
-      'User-Agent': 'JewelryCRM/1.0'
+      'User-Agent': 'Saldo/1.0'
     });
     console.log('PrivatBank accounts response:', JSON.stringify(data).substring(0, 300));
     if (data.status !== 'SUCCESS') {
@@ -111,7 +111,7 @@ router.post('/privatbank/sync', auth, async (req, res) => {
 
     const url = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=500`;
     console.log('PrivatBank sync URL:', url);
-    const data = await httpsGet(url, { 'token': cleanToken, 'Content-Type': 'application/json;charset=utf-8', 'User-Agent': 'JewelryCRM/1.0' });
+    const data = await httpsGet(url, { 'token': cleanToken, 'Content-Type': 'application/json;charset=utf-8', 'User-Agent': 'Saldo/1.0' });
     if (data.status !== 'SUCCESS') return res.status(400).json({ error: `ПриватБанк: ${data.message || data.errorDescription || JSON.stringify(data).substring(0, 200)}` });
 
     // Збираємо всі транзакції з пагінацією
@@ -119,7 +119,7 @@ router.post('/privatbank/sync', auth, async (req, res) => {
     let nextPageId = data.exist_next_page ? data.next_page_id : null;
     while (nextPageId) {
       const nextUrl = `https://acp.privatbank.ua/api/statements/transactions?acc=${encodeURIComponent(account_id)}&startDate=${fmtD(from)}&endDate=${fmtD(now)}&limit=500&followId=${nextPageId}`;
-      const nextData = await httpsGet(nextUrl, { 'token': cleanToken, 'Content-Type': 'application/json;charset=utf-8', 'User-Agent': 'JewelryCRM/1.0' });
+      const nextData = await httpsGet(nextUrl, { 'token': cleanToken, 'Content-Type': 'application/json;charset=utf-8', 'User-Agent': 'Saldo/1.0' });
       if (nextData.status !== 'SUCCESS') break;
       allTx = allTx.concat(nextData.transactions || []);
       nextPageId = nextData.exist_next_page ? nextData.next_page_id : null;

@@ -92,7 +92,7 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Jewelry CRM працює' });
+  res.json({ status: 'ok', message: 'Saldo працює' });
 });
 
 app.get('/api/server-ip', (req, res) => {

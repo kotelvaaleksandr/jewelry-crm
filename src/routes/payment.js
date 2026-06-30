@@ -31,7 +31,7 @@ router.post('/liqpay/checkout', auth, async (req, res) => {
       action: 'subscribe',
       amount: PLAN_AMOUNT,
       currency: 'UAH',
-      description: 'Підписка Jewelry CRM — щомісячний платіж',
+      description: 'Підписка Saldo — щомісячний платіж',
       order_id: orderId,
       subscribe: 1,
       subscribe_date_start: new Date().toISOString().slice(0, 19).replace('T', ' '),
