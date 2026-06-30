@@ -47,7 +47,7 @@
 <div class="header">
   <h1>Jewelry CRM</h1>
   <div style="display:flex;align-items:center;gap:12px">
-    <span id="userName"></span>
+    <button id="userName" onclick="openCabinet()" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600"></button>
     <button id="sync-all-btn" onclick="syncAllBanks()" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.5);color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">↻ Синхронізація</button>
     <button class="logout" onclick="logout()">Вийти</button>
   </div>
@@ -1485,6 +1485,162 @@ async function deleteRegularExpense(id) {
 
 // Ініціалізація поля при завантаженні
 updateRegPayField();
+
+// ---- Особистий кабінет ----
+function openCabinet() {
+  const u = JSON.parse(localStorage.getItem('user') || '{}');
+  document.getElementById('cab-email').textContent = u.email || '';
+  document.getElementById('cabinet-modal').style.display = 'flex';
+  loadCabinetTab('profile');
+}
+function closeCabinet() {
+  document.getElementById('cabinet-modal').style.display = 'none';
+}
+function loadCabinetTab(tab) {
+  ['profile','help','payment','security','export'].forEach(t => {
+    document.getElementById('cab-tab-' + t).style.background = t === tab ? '#6366f1' : '#f3f4f6';
+    document.getElementById('cab-tab-' + t).style.color = t === tab ? '#fff' : '#555';
+  });
+  const content = document.getElementById('cabinet-content');
+  const u = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (tab === 'profile') {
+    content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Особисті дані</h3>'
+      + '<div style="display:flex;flex-direction:column;gap:14px">'
+      + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Назва компанії</label>'
+      + '<input id="cab-company" type="text" value="' + (u.company_name || '') + '" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
+      + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Email</label>'
+      + '<input type="text" value="' + (u.email || '') + '" readonly style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;background:#f9f9f9;color:#888"></div>'
+      + '<hr style="border:none;border-top:1px solid #f0f0f0;margin:4px 0">'
+      + '<h4 style="font-size:13px;font-weight:700;color:#444;margin-bottom:4px">Змінити пароль</h4>'
+      + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Поточний пароль</label>'
+      + '<input id="cab-pass-old" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
+      + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Новий пароль</label>'
+      + '<input id="cab-pass-new" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
+      + '<button onclick="saveCabinetProfile()" class="btn" style="background:#6366f1;align-self:flex-start;padding:10px 28px">Зберегти</button>'
+      + '<div id="cab-profile-msg" style="font-size:13px;min-height:18px"></div>'
+      + '</div>';
+  } else if (tab === 'help') {
+    content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Довідка</h3>'
+      + '<div style="display:flex;flex-direction:column;gap:12px">'
+      + faqItem('Як підключити банк?', 'Перейдіть у Налаштування → вкладка "Інтеграції". Введіть токен Monobank або ПриватБанку і натисніть "Підключити".')
+      + faqItem('Як синхронізувати транзакції?', 'Натисніть кнопку "↻ Синхронізація" у правому верхньому куті. Синхронізуються всі підключені банки.')
+      + faqItem('Як встановити план?', 'Перейдіть у розділ "План", виберіть період (тиждень/місяць/квартал/рік), встановіть цільові значення і натисніть "Зберегти".')
+      + faqItem('Як додати регулярні витрати?', 'Налаштування → "Регулярні витрати". Вкажіть назву, суму, періодичність і день оплати.')
+      + faqItem('Підтримка', 'З питаннями пишіть на: <a href="mailto:support@jewelrycrm.ua" style="color:#6366f1">support@jewelrycrm.ua</a>')
+      + '</div>';
+  } else if (tab === 'payment') {
+    content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Оплата та тариф</h3>'
+      + '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;margin-bottom:20px">'
+      + '<div style="font-size:13px;color:#16a34a;font-weight:700;margin-bottom:4px">✓ Активний тариф</div>'
+      + '<div style="font-size:22px;font-weight:800;color:#1a1a1a;margin-bottom:4px">Базовий</div>'
+      + '<div style="font-size:13px;color:#888">Безкоштовно на період тестування</div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px">'
+      + planFeature('✓', 'Синхронізація з банками (Monobank, ПриватБанк)')
+      + planFeature('✓', 'Доходи, витрати, закупівлі')
+      + planFeature('✓', 'Дашборд та аналітика')
+      + planFeature('✓', 'Планові показники')
+      + planFeature('✓', 'Регулярні витрати')
+      + '</div>';
+  } else if (tab === 'security') {
+    const loginDate = new Date().toLocaleDateString('uk-UA', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Безпека</h3>'
+      + '<div style="display:flex;flex-direction:column;gap:16px">'
+      + '<div style="background:#f8f9fa;border-radius:10px;padding:16px">'
+      + '<div style="font-size:12px;color:#888;font-weight:600;margin-bottom:4px">ПОТОЧНА СЕСІЯ</div>'
+      + '<div style="font-size:14px;font-weight:600;color:#1a1a1a">Цей браузер</div>'
+      + '<div style="font-size:12px;color:#888;margin-top:2px">Вхід: ' + loginDate + '</div>'
+      + '<div style="margin-top:10px"><button onclick="logout()" style="background:#fee2e2;color:#dc2626;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Завершити сесію</button></div>'
+      + '</div>'
+      + '<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:14px;font-size:13px;color:#92400e">'
+      + '⚠ Щоб змінити пароль — перейдіть у вкладку "Особисті дані"'
+      + '</div>'
+      + '</div>';
+  } else if (tab === 'export') {
+    content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Експорт даних</h3>'
+      + '<div style="display:flex;flex-direction:column;gap:12px">'
+      + '<div style="background:#f8f9fa;border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between">'
+      + '<div><div style="font-weight:600;font-size:14px">Доходи</div><div style="font-size:12px;color:#888;margin-top:2px">Всі доходи у форматі CSV</div></div>'
+      + '<button onclick="exportData(\'incomes\')" style="background:#6366f1;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">↓ CSV</button>'
+      + '</div>'
+      + '<div style="background:#f8f9fa;border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between">'
+      + '<div><div style="font-weight:600;font-size:14px">Витрати</div><div style="font-size:12px;color:#888;margin-top:2px">Всі витрати у форматі CSV</div></div>'
+      + '<button onclick="exportData(\'expenses\')" style="background:#6366f1;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">↓ CSV</button>'
+      + '</div>'
+      + '<div style="background:#f8f9fa;border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between">'
+      + '<div><div style="font-weight:600;font-size:14px">Закупівлі</div><div style="font-size:12px;color:#888;margin-top:2px">Всі закупівлі у форматі CSV</div></div>'
+      + '<button onclick="exportData(\'purchases\')" style="background:#6366f1;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">↓ CSV</button>'
+      + '</div>'
+      + '</div>';
+  }
+}
+function faqItem(q, a) {
+  return '<div style="background:#f8f9fa;border-radius:10px;padding:14px 16px">'
+    + '<div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#1a1a1a">' + q + '</div>'
+    + '<div style="font-size:13px;color:#555;line-height:1.5">' + a + '</div></div>';
+}
+function planFeature(icon, text) {
+  return '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#374151">'
+    + '<span style="color:#16a34a;font-weight:700">' + icon + '</span>' + text + '</div>';
+}
+async function saveCabinetProfile() {
+  const company = document.getElementById('cab-company').value.trim();
+  const oldPass = document.getElementById('cab-pass-old').value;
+  const newPass = document.getElementById('cab-pass-new').value;
+  const msg = document.getElementById('cab-profile-msg');
+  try {
+    const body = { company_name: company };
+    if (oldPass && newPass) { body.old_password = oldPass; body.new_password = newPass; }
+    const res = await api('/auth/profile', 'PUT', body);
+    if (res && res.error) { msg.style.color = '#dc2626'; msg.textContent = res.error; return; }
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    u.company_name = company;
+    localStorage.setItem('user', JSON.stringify(u));
+    document.getElementById('userName').textContent = company || u.email || '';
+    msg.style.color = '#16a34a';
+    msg.textContent = '✓ Збережено';
+    document.getElementById('cab-pass-old').value = '';
+    document.getElementById('cab-pass-new').value = '';
+  } catch(e) {
+    msg.style.color = '#dc2626';
+    msg.textContent = 'Помилка: ' + e.message;
+  }
+}
+async function exportData(type) {
+  const data = await api('/' + type);
+  if (!data || !data.length) { alert('Немає даних для експорту'); return; }
+  const keys = Object.keys(data[0]).filter(k => !['user_id','bank_tx_id'].includes(k));
+  const header = keys.join(';');
+  const rows = data.map(r => keys.map(k => (r[k] ?? '').toString().replace(/;/g, ',')).join(';'));
+  const csv = '﻿' + [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = type + '_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+}
 </script>
+
+<!-- Модальне вікно особистого кабінету -->
+<div id="cabinet-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeCabinet()">
+  <div style="background:#fff;border-radius:16px;width:520px;max-width:95vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="color:#fff;font-size:16px;font-weight:700" id="cab-title">Особистий кабінет</div>
+        <div style="color:rgba(255,255,255,0.7);font-size:12px;margin-top:2px" id="cab-email"></div>
+      </div>
+      <button onclick="closeCabinet()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1">×</button>
+    </div>
+    <div style="display:flex;gap:6px;padding:14px 16px 0;border-bottom:1px solid #f0f0f0;flex-wrap:wrap">
+      <button id="cab-tab-profile"  onclick="loadCabinetTab('profile')"  style="padding:7px 14px;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#6366f1;color:#fff">Особисті дані</button>
+      <button id="cab-tab-help"     onclick="loadCabinetTab('help')"     style="padding:7px 14px;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#f3f4f6;color:#555">Довідка</button>
+      <button id="cab-tab-payment"  onclick="loadCabinetTab('payment')"  style="padding:7px 14px;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#f3f4f6;color:#555">Оплата</button>
+      <button id="cab-tab-security" onclick="loadCabinetTab('security')" style="padding:7px 14px;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#f3f4f6;color:#555">Безпека</button>
+      <button id="cab-tab-export"   onclick="loadCabinetTab('export')"   style="padding:7px 14px;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#f3f4f6;color:#555">Експорт</button>
+    </div>
+    <div id="cabinet-content" style="padding:22px 24px;overflow-y:auto;flex:1"></div>
+  </div>
+</div>
 </body>
 </html>

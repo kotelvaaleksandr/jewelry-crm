@@ -40,4 +40,26 @@ router.post('/login', async (req, res) => {
   }
 });
 
+const auth = require('../middleware/auth');
+
+router.put('/profile', auth, async (req, res) => {
+  const { company_name, old_password, new_password } = req.body;
+  try {
+    if (old_password && new_password) {
+      const userRes = await pool.query('SELECT password FROM users WHERE id=$1', [req.userId]);
+      const valid = await bcrypt.compare(old_password, userRes.rows[0].password);
+      if (!valid) return res.status(400).json({ error: 'Невірний поточний пароль' });
+      const hash = await bcrypt.hash(new_password, 10);
+      await pool.query('UPDATE users SET password=$1 WHERE id=$2', [hash, req.userId]);
+    }
+    const result = await pool.query(
+      'UPDATE users SET company_name=$1 WHERE id=$2 RETURNING id, email, company_name',
+      [company_name, req.userId]
+    );
+    res.json(result.rows[0]);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
