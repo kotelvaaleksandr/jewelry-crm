@@ -943,16 +943,21 @@ async function loadIncomes() {
       return ta - tb;
     });
   }
-  document.getElementById('incomes-list').innerHTML = data.map(r =>
-    `<tr><td style="white-space:nowrap">${fmtDateTime(r)}</td>
-     <td><select onchange="updateIncome(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
-       ${incomeTypes.map(t=>`<option${t.name===r.type?' selected':''}>${t.name}</option>`).join('')}
-     </select></td>
-     <td style="font-size:12px;color:#888">${r.source||''}</td>
-     <td class="green">${fmt(r.amount)}</td>
-     <td>${r.description||''}</td>
-     <td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`
-  ).join('');
+  document.getElementById('incomes-list').innerHTML = data.map(r => {
+    const isInternal = r.type === 'Внутрішній переказ';
+    const typeCell = isInternal
+      ? `<span style="font-size:12px;color:#999;font-style:italic">↔ Внутрішній переказ</span>`
+      : `<select onchange="updateIncome(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
+           ${incomeTypes.map(t=>`<option${t.name===r.type?' selected':''}>${t.name}</option>`).join('')}
+         </select>`;
+    return `<tr style="${isInternal?'opacity:0.45;':''}">
+      <td style="white-space:nowrap">${fmtDateTime(r)}</td>
+      <td>${typeCell}</td>
+      <td style="font-size:12px;color:#888">${r.source||''}</td>
+      <td class="green">${fmt(r.amount)}</td>
+      <td>${r.description||''}</td>
+      <td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`;
+  }).join('');
 }
 
 function toggleIncomeSort() {
@@ -1002,16 +1007,21 @@ async function loadExpenses() {
       return ta - tb;
     });
   }
-  document.getElementById('expenses-list').innerHTML = data.map(r =>
-    `<tr><td style="white-space:nowrap">${fmtDateTime(r)}</td>
-     <td><select onchange="updateExpense(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
-       ${(expenseCategories.map(c=>c.name).concat(Array.isArray(window._regExpNames)?window._regExpNames:[])).map(n=>'<option'+(n===r.category?' selected':'')+'>'+n+'</option>').join('')}
-     </select></td>
-     <td style="font-size:12px;color:#888">${r.source||''}</td>
-     <td class="red">${fmt(r.amount)}</td>
-     <td>${r.description||''}</td>
-     <td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`
-  ).join('');
+  document.getElementById('expenses-list').innerHTML = data.map(r => {
+    const isInternal = r.category === 'Внутрішній переказ';
+    const catCell = isInternal
+      ? `<span style="font-size:12px;color:#999;font-style:italic">↔ Внутрішній переказ</span>`
+      : `<select onchange="updateExpense(${r.id},this.value)" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff">
+           ${(expenseCategories.map(c=>c.name).concat(Array.isArray(window._regExpNames)?window._regExpNames:[])).map(n=>'<option'+(n===r.category?' selected':'')+'>'+n+'</option>').join('')}
+         </select>`;
+    return `<tr style="${isInternal?'opacity:0.45;':''}">
+      <td style="white-space:nowrap">${fmtDateTime(r)}</td>
+      <td>${catCell}</td>
+      <td style="font-size:12px;color:#888">${r.source||''}</td>
+      <td class="red">${fmt(r.amount)}</td>
+      <td>${r.description||''}</td>
+      <td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`;
+  }).join('');
 }
 
 function toggleExpenseSort() {
