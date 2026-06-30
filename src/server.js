@@ -34,6 +34,11 @@ require('./db').query(`
     active BOOLEAN DEFAULT true
   );
   ALTER TABLE plans ADD COLUMN IF NOT EXISTS period VARCHAR(20) NOT NULL DEFAULT 'month';
+  ALTER TABLE integrations ADD COLUMN IF NOT EXISTS login VARCHAR(200);
+  ALTER TABLE integrations ADD COLUMN IF NOT EXISTS public_certificate TEXT;
+  ALTER TABLE integrations ADD COLUMN IF NOT EXISTS jwt_token TEXT;
+  ALTER TABLE integrations ADD COLUMN IF NOT EXISTS jwt_expiry TIMESTAMP;
+  ALTER TABLE integrations ADD COLUMN IF NOT EXISTS novapay_client_id INTEGER;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
@@ -85,6 +90,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/finances'));
 app.use('/api/integrations', require('./routes/integrations'));
 app.use('/api/payment', require('./routes/payment'));
+app.use('/api/integrations/novapay', require('./routes/novapay'));
 
 // Щоденна перевірка підписок на списання (раз на годину)
 setInterval(() => {

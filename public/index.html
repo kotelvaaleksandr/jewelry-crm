@@ -362,17 +362,42 @@
           <div style="margin-left:auto" id="novapay-status"></div>
         </div>
         <div id="novapay-form">
-          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">API токен</label>
-          <div style="display:flex;gap:8px">
-            <input type="password" id="novapay-token" placeholder="Токен НоваПей" style="flex:1">
-            <button class="btn" onclick="saveIntegration('novapay')">Підключити</button>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px">Логін (email бізнес-кабінету)</label>
+              <input type="text" id="novapay-login" placeholder="example@email.com" style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px">Refresh Token</label>
+              <input type="password" id="novapay-token" placeholder="Згенерований в кабінеті NovaPay" style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px">Публічний сертифікат (RSA PEM)</label>
+              <textarea id="novapay-cert" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----" rows="4" style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:11px;font-family:monospace;resize:vertical"></textarea>
+            </div>
+            <button class="btn" onclick="connectNovaPay()" style="align-self:flex-start">Підключити</button>
+            <p style="font-size:12px;color:#999;margin:0">Бізнес-кабінет NovaPay → Система → Налаштування → API → Генерація Refresh Token</p>
           </div>
-          <p style="font-size:12px;color:#999;margin-top:6px">Особистий кабінет НоваПей → Налаштування → API доступ</p>
         </div>
+        <div id="novapay-step2" style="display:none">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">Оберіть підприємство:</div>
+          <select id="novapay-client-select" style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;margin-bottom:10px"></select>
+          <button class="btn" onclick="loadNovaPayAccounts()">Далі →</button>
+        </div>
+        <div id="novapay-step3" style="display:none">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">Оберіть рахунок:</div>
+          <select id="novapay-account-select" style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;margin-bottom:10px"></select>
+          <button class="btn" onclick="activateNovaPay()">Активувати</button>
+        </div>
+        <div id="novapay-msg" style="font-size:13px;margin-top:6px;min-height:16px"></div>
         <div id="novapay-connected" style="display:none">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:13px;color:#059669;font-weight:600">✓ Підключено</span>
             <button class="btn btn-red" onclick="removeIntegration('novapay')" style="padding:6px 12px;font-size:12px">Відключити</button>
+          </div>
+          <div style="margin-top:10px">
+            <button class="btn" onclick="syncNovaPay()" style="background:#059669;padding:7px 16px;font-size:12px">↻ Синхронізувати</button>
+            <span id="novapay-sync-msg" style="font-size:12px;color:#888;margin-left:10px"></span>
           </div>
         </div>
       </div>
@@ -423,8 +448,8 @@ document.getElementById('userName').textContent = user.company_name || user.emai
 
 function logout() { localStorage.clear(); window.location.href = '/login.html'; }
 
-const SYNCABLE_PROVIDERS = ['monobank', 'privatbank'];
-const PROVIDER_NAMES = { monobank: 'Monobank', privatbank: 'ПриватБанк' };
+const SYNCABLE_PROVIDERS = ['monobank', 'privatbank', 'novapay'];
+const PROVIDER_NAMES = { monobank: 'Monobank', privatbank: 'ПриватБанк', novapay: 'NovaPay' };
 
 async function syncAllBanks() {
   const btn = document.getElementById('sync-all-btn');
@@ -1059,7 +1084,9 @@ const providerMap = {
 
 async function loadIntegrations() {
   const data = await api('/integrations');
+  // Monobank і PrivatBank через providerMap
   for (const [provider, els] of Object.entries(providerMap)) {
+    if (provider === 'novapay') continue;
     const found = data.find(r => r.provider === provider && r.enabled);
     document.getElementById(els.form).style.display = found ? 'none' : 'block';
     document.getElementById(els.connected).style.display = found ? 'block' : 'none';
@@ -1073,6 +1100,77 @@ async function loadIntegrations() {
     if (privat.account_id) document.getElementById('privat-account-name').textContent = '· ' + privat.account_id;
     if (privat.last_sync) document.getElementById('privat-sync-result').textContent = 'Остання синхронізація: ' + new Date(privat.last_sync).toLocaleString('uk-UA');
   }
+  // NovaPay — окремий UI
+  const nova = data.find(r => r.provider === 'novapay' && r.enabled);
+  if (nova) {
+    document.getElementById('novapay-form').style.display = 'none';
+    document.getElementById('novapay-step2').style.display = 'none';
+    document.getElementById('novapay-step3').style.display = 'none';
+    document.getElementById('novapay-connected').style.display = 'block';
+    if (nova.last_sync) {
+      document.getElementById('novapay-sync-msg').textContent = 'Остання синхронізація: ' + new Date(nova.last_sync).toLocaleString('uk-UA');
+    }
+  }
+}
+
+// ---- NovaPay ----
+let _novaClientId = null;
+
+async function connectNovaPay() {
+  const login = document.getElementById('novapay-login').value.trim();
+  const token = document.getElementById('novapay-token').value.trim();
+  const cert = document.getElementById('novapay-cert').value.trim();
+  const msg = document.getElementById('novapay-msg');
+  if (!login || !token || !cert) { msg.style.color='#dc2626'; msg.textContent='Заповніть всі поля'; return; }
+  msg.style.color='#888'; msg.textContent='Підключення...';
+  try {
+    const res = await api('/integrations/novapay/connect', 'POST', { login, refresh_token: token, public_certificate: cert });
+    if (res.error) { msg.style.color='#dc2626'; msg.textContent=res.error; return; }
+    const sel = document.getElementById('novapay-client-select');
+    sel.innerHTML = res.clients.map(c => `<option value="${c.id}">${c.name} (${c.statecode})</option>`).join('');
+    document.getElementById('novapay-form').style.display = 'none';
+    document.getElementById('novapay-step2').style.display = 'block';
+    msg.textContent = '';
+  } catch(e) { msg.style.color='#dc2626'; msg.textContent='Помилка: '+e.message; }
+}
+
+async function loadNovaPayAccounts() {
+  const clientId = document.getElementById('novapay-client-select').value;
+  const msg = document.getElementById('novapay-msg');
+  _novaClientId = clientId;
+  msg.style.color='#888'; msg.textContent='Завантаження рахунків...';
+  try {
+    const res = await api('/integrations/novapay/accounts', 'POST', { client_id: parseInt(clientId) });
+    if (res.error) { msg.style.color='#dc2626'; msg.textContent=res.error; return; }
+    const sel = document.getElementById('novapay-account-select');
+    sel.innerHTML = res.accounts.map(a => `<option value="${a.id}">${a.iban} (${a.currency})</option>`).join('');
+    document.getElementById('novapay-step2').style.display = 'none';
+    document.getElementById('novapay-step3').style.display = 'block';
+    msg.textContent = '';
+  } catch(e) { msg.style.color='#dc2626'; msg.textContent='Помилка: '+e.message; }
+}
+
+async function activateNovaPay() {
+  const accountId = document.getElementById('novapay-account-select').value;
+  const msg = document.getElementById('novapay-msg');
+  msg.style.color='#888'; msg.textContent='Активація...';
+  try {
+    const res = await api('/integrations/novapay/activate', 'POST', { client_id: parseInt(_novaClientId), account_id: parseInt(accountId) });
+    if (res.error) { msg.style.color='#dc2626'; msg.textContent=res.error; return; }
+    document.getElementById('novapay-step3').style.display = 'none';
+    document.getElementById('novapay-connected').style.display = 'block';
+    msg.style.color='#059669'; msg.textContent='✓ NovaPay підключено';
+  } catch(e) { msg.style.color='#dc2626'; msg.textContent='Помилка: '+e.message; }
+}
+
+async function syncNovaPay() {
+  const msg = document.getElementById('novapay-sync-msg');
+  msg.textContent = 'Синхронізація...';
+  try {
+    const res = await api('/integrations/novapay/sync', 'POST', {});
+    if (res.error) { msg.style.color='#dc2626'; msg.textContent=res.error; return; }
+    msg.style.color='#059669'; msg.textContent='✓ Додано: '+res.synced+' транзакцій';
+  } catch(e) { msg.style.color='#dc2626'; msg.textContent='Помилка: '+e.message; }
 }
 
 async function loadMonoAccounts() {
