@@ -779,9 +779,17 @@ async function loadDashboard() {
     const paidThisMonth = new Set(
       expenses.filter(r => inPeriod(r.date, monthFrom, monthTo)).map(r => r.category)
     );
-    document.getElementById('dash-regular-expenses').innerHTML = regExpenses.length === 0
-      ? '<p style="color:#aaa;font-size:13px">Немає регулярних витрат</p>'
-      : regExpenses.map(r => {
+    // Показуємо лише ті, чия дата платежу припадає на поточний місяць
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const regThisMonth = regExpenses.filter(r => {
+      const d = getNextPayDate(r);
+      if (!d) return false;
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+    document.getElementById('dash-regular-expenses').innerHTML = regThisMonth.length === 0
+      ? '<p style="color:#aaa;font-size:13px">Немає регулярних витрат у цьому місяці</p>'
+      : regThisMonth.map(r => {
           const paid = paidThisMonth.has(r.name);
           const bg = paid ? '#dcfce7' : '#fee2e2';
           const fg = paid ? '#059669' : '#dc2626';
