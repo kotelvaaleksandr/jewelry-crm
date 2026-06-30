@@ -92,16 +92,17 @@ router.post('/apply-keywords', auth, async (req, res) => {
     const likeConditions = keywords.map((_, i) => `description ILIKE $${i + 2}`).join(' OR ');
     const likeParams = keywords.map(k => `%${k}%`);
 
-    // Debug: скільки записів знайдено
+    // Debug: скільки записів знайдено і які в них type значення
     const debugInc = await pool.query(
-      `SELECT COUNT(*) as cnt FROM incomes WHERE user_id=$1 AND (${likeConditions})`,
+      `SELECT id, type, LEFT(description,60) as desc FROM incomes WHERE user_id=$1 AND (${likeConditions}) LIMIT 5`,
       [req.userId, ...likeParams]
     );
     const debugExp = await pool.query(
-      `SELECT COUNT(*) as cnt FROM expenses WHERE user_id=$1 AND (${likeConditions})`,
+      `SELECT id, category, LEFT(description,60) as desc FROM expenses WHERE user_id=$1 AND (${likeConditions}) LIMIT 5`,
       [req.userId, ...likeParams]
     );
-    console.log('apply-keywords debug: incomes found=', debugInc.rows[0].cnt, 'expenses found=', debugExp.rows[0].cnt);
+    console.log('apply-keywords debug incomes:', JSON.stringify(debugInc.rows));
+    console.log('apply-keywords debug expenses:', JSON.stringify(debugExp.rows));
 
     const incResult = await pool.query(
       `UPDATE incomes SET type='Внутрішній переказ'
@@ -116,7 +117,7 @@ router.post('/apply-keywords', auth, async (req, res) => {
 
     const updated = (incResult.rowCount || 0) + (expResult.rowCount || 0);
     console.log('apply-keywords: updated incomes=', incResult.rowCount, 'expenses=', expResult.rowCount);
-    res.json({ updated });
+    res.json({ updated, debug: { sample_incomes: debugInc.rows, sample_expenses: debugExp.rows } });
   } catch(e) {
     console.error('apply-keywords error:', e.message);
     res.status(500).json({ error: e.message });

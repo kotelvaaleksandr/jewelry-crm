@@ -1139,12 +1139,14 @@ async function applyKeywords() {
   const res = await api('/auth/apply-keywords', 'POST', {});
   if (res && res.updated !== undefined) {
     msg.style.color = '#059669';
-    msg.textContent = `✓ Оновлено ${res.updated} транзакцій`;
+    const debugInfo = res.debug ? ` (знайдено: ${res.debug.sample_incomes?.length||0} дох, ${res.debug.sample_expenses?.length||0} вит)` : '';
+    msg.textContent = `✓ Оновлено ${res.updated} транзакцій${debugInfo}`;
+    if (res.debug) console.log('apply-keywords debug:', res.debug);
   } else {
     msg.style.color = '#dc3545';
     msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';
   }
-  setTimeout(() => { msg.textContent = ''; }, 4000);
+  setTimeout(() => { msg.textContent = ''; }, 6000);
 }
 
 async function loadIntegrations() {
