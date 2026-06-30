@@ -148,8 +148,8 @@ router.post('/plans', auth, async (req, res) => {
   const result = await pool.query(
     `INSERT INTO plans (user_id, category, category_type, period, value_type, value, condition, active)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-     ON CONFLICT (user_id, category, category_type)
-     DO UPDATE SET period=$4, value_type=$5, value=$6, condition=$7, active=$8
+     ON CONFLICT (user_id, category, category_type, period)
+     DO UPDATE SET value_type=$5, value=$6, condition=$7, active=$8
      RETURNING *`,
     [req.userId, category, category_type, period, value_type, value ?? null, condition, active !== false]
   );

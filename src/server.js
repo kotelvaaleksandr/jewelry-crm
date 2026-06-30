@@ -32,7 +32,7 @@ require('./db').query(`
     value NUMERIC(12,2),
     condition VARCHAR(10) DEFAULT 'gte',
     active BOOLEAN DEFAULT true,
-    UNIQUE(user_id, category, category_type)
+    UNIQUE(user_id, category, category_type, period)
   );
   CREATE TABLE IF NOT EXISTS regular_expenses (
     id SERIAL PRIMARY KEY,

@@ -95,7 +95,14 @@
 
   <!-- План -->
   <div class="tab" id="tab-plan">
-    <div class="card" style="margin-bottom:16px">
+    <!-- Вкладки періодів -->
+    <div style="display:flex;gap:0;background:#fff;border-radius:10px;overflow:hidden;border:1.5px solid #e0e0e0;margin-bottom:16px">
+      <button id="plan-tab-week"    onclick="switchPlanPeriod('week')"    style="flex:1;padding:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#6366f1;color:#fff">Тиждень</button>
+      <button id="plan-tab-month"   onclick="switchPlanPeriod('month')"   style="flex:1;padding:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#666;border-left:1px solid #e0e0e0">Місяць</button>
+      <button id="plan-tab-quarter" onclick="switchPlanPeriod('quarter')" style="flex:1;padding:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#666;border-left:1px solid #e0e0e0">Квартал</button>
+      <button id="plan-tab-year"    onclick="switchPlanPeriod('year')"    style="flex:1;padding:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#666;border-left:1px solid #e0e0e0">Рік</button>
+    </div>
+    <div class="card">
       <h2 style="margin-bottom:4px">Планові показники</h2>
       <p style="font-size:13px;color:#888;margin-bottom:20px">Встановіть цільові значення для кожної статті доходів і витрат</p>
 
@@ -106,7 +113,7 @@
       <div id="plan-expenses" style="display:flex;flex-direction:column;gap:10px"></div>
 
       <div style="margin-top:20px">
-        <button class="btn" onclick="saveAllPlans()" style="background:#6366f1;padding:10px 28px">Зберегти всі плани</button>
+        <button class="btn" onclick="saveAllPlans()" style="background:#6366f1;padding:10px 28px">Зберегти плани</button>
       </div>
     </div>
   </div>
@@ -1086,17 +1093,25 @@ async function removeIntegration(provider) {
 
 // ---- Планові показники ----
 let plansData = {};
+let currentPlanPeriod = 'week';
+let planExpCats = [];
+
+function switchPlanPeriod(period) {
+  currentPlanPeriod = period;
+  ['week','month','quarter','year'].forEach(p => {
+    const btn = document.getElementById('plan-tab-' + p);
+    btn.style.background = p === period ? '#6366f1' : '#fff';
+    btn.style.color = p === period ? '#fff' : '#666';
+  });
+  renderPlanRows();
+}
 
 function planRowHtml(name, type, plan) {
-  const id = `plan_${type}_${name.replace(/\s+/g,'_').replace(/[^a-zA-Zа-яА-ЯїЇіІєЄ_0-9]/g,'_')}`;
+  const id = `plan_${type}_${name.replace(/\W/g,'_')}`;
   const active = plan ? plan.active : true;
-  const period = plan ? plan.period : 'month';
   const valueType = plan ? plan.value_type : 'absolute';
   const value = plan ? (plan.value ?? '') : '';
   const condition = plan ? plan.condition : 'gte';
-
-  const periodOpts = [['week','Тиждень'],['month','Місяць'],['quarter','Квартал'],['year','Рік']]
-    .map(([v,l]) => `<option value="${v}" ${period===v?'selected':''}>${l}</option>`).join('');
   const condOpts = [['gte','≥ (не менше)'],['eq','= (дорівнює)'],['lte','≤ (не більше)']]
     .map(([v,l]) => `<option value="${v}" ${condition===v?'selected':''}>${l}</option>`).join('');
 
@@ -1107,12 +1122,11 @@ function planRowHtml(name, type, plan) {
       Відстежувати
     </label>
     <div id="${id}_fields" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;${active?'':'opacity:.3;pointer-events:none'}">
-      <select id="${id}_period" style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">${periodOpts}</select>
       <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden">
         <button id="${id}_abs" onclick="setPlanValueType('${id}','absolute')" style="padding:4px 10px;font-size:12px;background:${valueType==='absolute'?'#6366f1':'#fff'};color:${valueType==='absolute'?'#fff':'#333'};border:none;cursor:pointer">₴</button>
         <button id="${id}_pct" onclick="setPlanValueType('${id}','percent')" style="padding:4px 10px;font-size:12px;background:${valueType==='percent'?'#6366f1':'#fff'};color:${valueType==='percent'?'#fff':'#333'};border:none;cursor:pointer">%</button>
       </div>
-      <input type="number" id="${id}_value" value="${value}" placeholder="0" min="0" style="width:90px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+      <input type="number" id="${id}_value" value="${value}" placeholder="0" min="0" style="width:100px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
       <select id="${id}_condition" style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">${condOpts}</select>
     </div>
     <input type="hidden" id="${id}_type" value="${type}">
@@ -1127,8 +1141,7 @@ function togglePlanRow(id) {
   const row = document.getElementById(id + '_row');
   fields.style.opacity = active ? '1' : '.3';
   fields.style.pointerEvents = active ? '' : 'none';
-  const nameEl = row.querySelector('div[style*="font-weight:600"]');
-  if (nameEl) nameEl.style.color = active ? '#1a1a1a' : '#aaa';
+  row.querySelector('div[style*="min-width"]').style.color = active ? '#1a1a1a' : '#aaa';
   row.style.borderColor = active ? '#e0e0e0' : '#f0f0f0';
 }
 
@@ -1140,21 +1153,26 @@ function setPlanValueType(id, vtype) {
   document.getElementById(id + '_pct').style.color = vtype === 'percent' ? '#fff' : '#333';
 }
 
+function renderPlanRows() {
+  const p = currentPlanPeriod;
+  document.getElementById('plan-incomes').innerHTML =
+    planRowHtml('Виручка', 'income', plansData[`income_Виручка_${p}`]);
+  document.getElementById('plan-expenses').innerHTML =
+    planExpCats.map(n => planRowHtml(n, 'expense', plansData[`expense_${n}_${p}`])).join('');
+}
+
 async function loadPlan() {
-  const [incTypes, expCats, plans, regExp] = await Promise.all([
-    api('/income-types'), api('/expense-categories'), api('/plans'), api('/regular-expenses')
+  const [expCats, plans, regExp] = await Promise.all([
+    api('/expense-categories'), api('/plans'), api('/regular-expenses')
   ]);
   plansData = {};
-  (plans || []).forEach(p => { plansData[`${p.category_type}_${p.category}`] = p; });
-
-  const allExpCats = [...(expCats||[]).map(c=>c.name)];
-  const catNames = new Set(allExpCats);
-  (regExp||[]).forEach(r => { if (!catNames.has(r.name)) allExpCats.push(r.name); });
-
-  document.getElementById('plan-incomes').innerHTML =
-    planRowHtml('Виручка', 'income', plansData['income_Виручка']);
-  document.getElementById('plan-expenses').innerHTML =
-    allExpCats.map(n => planRowHtml(n, 'expense', plansData[`expense_${n}`])).join('');
+  (plans || []).forEach(p => {
+    plansData[`${p.category_type}_${p.category}_${p.period}`] = p;
+  });
+  planExpCats = [...(expCats||[]).map(c=>c.name)];
+  const catNames = new Set(planExpCats);
+  (regExp||[]).forEach(r => { if (!catNames.has(r.name)) planExpCats.push(r.name); });
+  switchPlanPeriod(currentPlanPeriod);
 }
 
 async function saveAllPlans() {
@@ -1165,14 +1183,13 @@ async function saveAllPlans() {
     const name = el.value;
     const type = document.getElementById(id + '_type').value;
     const active = document.getElementById(id + '_active').checked;
-    const period = document.getElementById(id + '_period').value;
     const valueType = document.getElementById(id + '_valuetype').value;
     const value = parseFloat(document.getElementById(id + '_value').value) || null;
     const condition = document.getElementById(id + '_condition').value;
-    await api('/plans', 'POST', { category: name, category_type: type, period, value_type: valueType, value, condition, active });
+    await api('/plans', 'POST', { category: name, category_type: type, period: currentPlanPeriod, value_type: valueType, value, condition, active });
     saved++;
   }
-  alert(`Збережено ${saved} планових показників`);
+  alert(`Збережено ${saved} планів на "${{'week':'тиждень','month':'місяць','quarter':'квартал','year':'рік'}[currentPlanPeriod]}"`);
 }
 
 loadDashboard();
