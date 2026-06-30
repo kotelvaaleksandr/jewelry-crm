@@ -392,12 +392,14 @@
         <div id="novapay-msg" style="font-size:13px;margin-top:6px;min-height:16px"></div>
         <div id="novapay-connected" style="display:none">
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:13px;color:#059669;font-weight:600">✓ Підключено</span>
-            <button class="btn btn-red" onclick="removeIntegration('novapay')" style="padding:6px 12px;font-size:12px">Відключити</button>
-          </div>
-          <div style="margin-top:10px">
-            <button class="btn" onclick="syncNovaPay()" style="background:#059669;padding:7px 16px;font-size:12px">↻ Синхронізувати</button>
-            <span id="novapay-sync-msg" style="font-size:12px;color:#888;margin-left:10px"></span>
+            <div>
+              <span style="font-size:13px;color:#059669;font-weight:600">✓ Підключено</span>
+              <span id="novapay-sync-msg" style="font-size:12px;color:#888;margin-left:10px"></span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" onclick="syncNovaPay()" style="padding:6px 14px;font-size:12px;background:#059669">↻ Синхронізувати</button>
+              <button class="btn btn-red" onclick="removeIntegration('novapay')" style="padding:6px 12px;font-size:12px">Відключити</button>
+            </div>
           </div>
         </div>
       </div>
