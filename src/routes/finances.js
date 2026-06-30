@@ -144,16 +144,29 @@ router.get('/plans', auth, async (req, res) => {
   res.json(result.rows);
 });
 router.post('/plans', auth, async (req, res) => {
-  const { category, category_type, period, value_type, value, condition, active } = req.body;
-  const result = await pool.query(
-    `INSERT INTO plans (user_id, category, category_type, period, value_type, value, condition, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-     ON CONFLICT (user_id, category, category_type, period)
-     DO UPDATE SET value_type=$5, value=$6, condition=$7, active=$8
-     RETURNING *`,
-    [req.userId, category, category_type, period, value_type, value ?? null, condition, active !== false]
-  );
-  res.json(result.rows[0]);
+  try {
+    const { category, category_type, period, value_type, value, condition, active } = req.body;
+    console.log('POST /plans body:', req.body);
+    const existing = await pool.query(
+      'SELECT id FROM plans WHERE user_id=$1 AND category=$2 AND category_type=$3 AND period=$4',
+      [req.userId, category, category_type, period]
+    );
+    let result;
+    if (existing.rows.length) {
+      result = await pool.query(
+        'UPDATE plans SET value_type=$1, value=$2, condition=$3, active=$4 WHERE id=$5 RETURNING *',
+        [value_type, value ?? null, condition, active !== false, existing.rows[0].id]
+      );
+    } else {
+      result = await pool.query(
+        'INSERT INTO plans (user_id, category, category_type, period, value_type, value, condition, active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+        [req.userId, category, category_type, period, value_type, value ?? null, condition, active !== false]
+      );
+    }
+    res.json(result.rows[0]);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Регулярні витрати

@@ -31,9 +31,11 @@ require('./db').query(`
     value_type VARCHAR(20) NOT NULL DEFAULT 'absolute',
     value NUMERIC(12,2),
     condition VARCHAR(10) DEFAULT 'gte',
-    active BOOLEAN DEFAULT true,
-    UNIQUE(user_id, category, category_type, period)
+    active BOOLEAN DEFAULT true
   );
+  ALTER TABLE plans ADD COLUMN IF NOT EXISTS period VARCHAR(20) NOT NULL DEFAULT 'month';
+  ALTER TABLE plans ADD COLUMN IF NOT EXISTS value_type VARCHAR(20) NOT NULL DEFAULT 'absolute';
+  ALTER TABLE plans ADD COLUMN IF NOT EXISTS condition VARCHAR(10) DEFAULT 'gte';
   CREATE TABLE IF NOT EXISTS regular_expenses (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,

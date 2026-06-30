@@ -468,13 +468,24 @@ function showTab(name) {
 }
 
 async function api(path, method = 'GET', body) {
-  const res = await fetch(API + path, {
-    method,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (res.status === 401) { logout(); return; }
-  return res.json();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(API + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (res.status === 401) { logout(); return; }
+    const text = await res.text();
+    try { return JSON.parse(text); } catch(e) { throw new Error('Сервер повернув не JSON: ' + text.substring(0, 100)); }
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('Таймаут — сервер не відповів за 15 секунд');
+    throw e;
+  }
 }
 
 function fmt(n) { return Number(n).toLocaleString('uk-UA') + ' ₴'; }
@@ -1205,7 +1216,7 @@ function switchPlanPeriod(period) {
 }
 
 function planRowHtml(name, type, plan) {
-  const id = `plan_${type}_${name.replace(/\W/g,'_')}`;
+  const id = `plan_${type}_${name.replace(/[^a-zA-Zа-яА-ЯїЇіІєЄ_0-9]/g,'_')}`;
   const active = plan ? plan.active : true;
   const valueType = plan ? plan.value_type : 'absolute';
   const value = plan ? (plan.value ?? '') : '';
@@ -1277,22 +1288,34 @@ async function saveAllPlans() {
   const btn = document.getElementById('plan-save-btn');
   btn.textContent = 'Збереження...';
   btn.disabled = true;
-  const rows = document.querySelectorAll('#tab-plan [id$="_name"]');
-  for (const el of rows) {
-    const id = el.id.replace('_name','');
-    const name = el.value;
-    const type = document.getElementById(id + '_type').value;
-    const active = document.getElementById(id + '_active').checked;
-    const valueType = document.getElementById(id + '_valuetype').value;
-    const value = parseFloat(document.getElementById(id + '_value').value) || null;
-    const condition = document.getElementById(id + '_condition').value;
-    const res = await api('/plans', 'POST', { category: name, category_type: type, period: currentPlanPeriod, value_type: valueType, value, condition, active });
-    // Оновлюємо plansData в пам'яті одразу
-    if (res && res.id) plansData[`${type}_${name}_${currentPlanPeriod}`] = res;
+  try {
+    const rows = document.querySelectorAll('#tab-plan [id$="_name"]');
+    for (const el of rows) {
+      const id = el.id.replace('_name','');
+      const name = el.value;
+      const typeEl = document.getElementById(id + '_type');
+      const activeEl = document.getElementById(id + '_active');
+      const valueTypeEl = document.getElementById(id + '_valuetype');
+      const valueEl = document.getElementById(id + '_value');
+      const conditionEl = document.getElementById(id + '_condition');
+      if (!typeEl || !activeEl || !valueTypeEl || !valueEl || !conditionEl) continue;
+      const type = typeEl.value;
+      const active = activeEl.checked;
+      const valueType = valueTypeEl.value;
+      const value = parseFloat(valueEl.value) || null;
+      const condition = conditionEl.value;
+      const res = await api('/plans', 'POST', { category: name, category_type: type, period: currentPlanPeriod, value_type: valueType, value, condition, active });
+      if (res && res.id) plansData[`${type}_${name}_${currentPlanPeriod}`] = res;
+    }
+    btn.textContent = '✓ Збережено';
+    setTimeout(() => { btn.textContent = 'Зберегти'; }, 2000);
+  } catch(e) {
+    console.error('saveAllPlans error:', e);
+    btn.textContent = 'Помилка!';
+    setTimeout(() => { btn.textContent = 'Зберегти'; }, 2000);
+  } finally {
+    btn.disabled = false;
   }
-  btn.textContent = '✓ Збережено';
-  btn.disabled = false;
-  setTimeout(() => { btn.textContent = 'Зберегти'; }, 2000);
 }
 
 loadDashboard();
