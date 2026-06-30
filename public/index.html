@@ -1513,10 +1513,10 @@ function loadCabinetTab(tab) {
       + '<input type="text" value="' + (u.email || '') + '" readonly style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;background:#f9f9f9;color:#888"></div>'
       + '<hr style="border:none;border-top:1px solid #f0f0f0;margin:4px 0">'
       + '<h4 style="font-size:13px;font-weight:700;color:#444;margin-bottom:4px">Змінити пароль</h4>'
-      + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Поточний пароль</label>'
-      + '<input id="cab-pass-old" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
-      + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Новий пароль</label>'
-      + '<input id="cab-pass-new" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
+      + passField('cab-pass-old', 'Поточний пароль')
+      + passField('cab-pass-new', 'Новий пароль')
+      + passField('cab-pass-confirm', 'Підтвердіть новий пароль')
+      + '<div style="font-size:12px;color:#888;background:#f8f9fa;border-radius:7px;padding:8px 12px">Обидва поля нового пароля повинні співпадати</div>'
       + '<button onclick="saveCabinetProfile()" class="btn" style="background:#6366f1;align-self:flex-start;padding:10px 28px">Зберегти</button>'
       + '<div id="cab-profile-msg" style="font-size:13px;min-height:18px"></div>'
       + '</div>';
@@ -1575,6 +1575,18 @@ function loadCabinetTab(tab) {
       + '</div>';
   }
 }
+function passField(id, label) {
+  return '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">' + label + '</label>'
+    + '<div style="position:relative">'
+    + '<input id="' + id + '" type="password" placeholder="••••••••" style="width:100%;padding:10px 40px 10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box">'
+    + '<button type="button" onclick="togglePassVis(\'' + id + '\',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;padding:2px 4px" title="Показати пароль">👁</button>'
+    + '</div></div>';
+}
+function togglePassVis(id, btn) {
+  const inp = document.getElementById(id);
+  if (inp.type === 'password') { inp.type = 'text'; btn.style.color = '#6366f1'; }
+  else { inp.type = 'password'; btn.style.color = '#aaa'; }
+}
 function faqItem(q, a) {
   return '<div style="background:#f8f9fa;border-radius:10px;padding:14px 16px">'
     + '<div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#1a1a1a">' + q + '</div>'
@@ -1588,7 +1600,14 @@ async function saveCabinetProfile() {
   const company = document.getElementById('cab-company').value.trim();
   const oldPass = document.getElementById('cab-pass-old').value;
   const newPass = document.getElementById('cab-pass-new').value;
+  const confirmPass = document.getElementById('cab-pass-confirm').value;
   const msg = document.getElementById('cab-profile-msg');
+  if (oldPass || newPass || confirmPass) {
+    if (!oldPass) { msg.style.color = '#dc2626'; msg.textContent = 'Введіть поточний пароль'; return; }
+    if (!newPass) { msg.style.color = '#dc2626'; msg.textContent = 'Введіть новий пароль'; return; }
+    if (newPass !== confirmPass) { msg.style.color = '#dc2626'; msg.textContent = '❌ Паролі не співпадають'; return; }
+    if (newPass.length < 6) { msg.style.color = '#dc2626'; msg.textContent = 'Новий пароль мінімум 6 символів'; return; }
+  }
   try {
     const body = { company_name: company };
     if (oldPass && newPass) { body.old_password = oldPass; body.new_password = newPass; }
@@ -1602,6 +1621,7 @@ async function saveCabinetProfile() {
     msg.textContent = '✓ Збережено';
     document.getElementById('cab-pass-old').value = '';
     document.getElementById('cab-pass-new').value = '';
+    document.getElementById('cab-pass-confirm').value = '';
   } catch(e) {
     msg.style.color = '#dc2626';
     msg.textContent = 'Помилка: ' + e.message;
