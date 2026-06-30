@@ -1507,6 +1507,14 @@ function loadCabinetTab(tab) {
   if (tab === 'profile') {
     content.innerHTML = '<h3 style="margin-bottom:18px;font-size:16px;font-weight:700">Особисті дані</h3>'
       + '<div style="display:flex;flex-direction:column;gap:14px">'
+      + '<div style="display:flex;gap:10px">'
+      + '<div style="flex:1"><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Прізвище</label>'
+      + '<input id="cab-lastname" type="text" value="' + (u.last_name || '') + '" placeholder="Коваленко" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box"></div>'
+      + '<div style="flex:1"><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Імʼя</label>'
+      + '<input id="cab-firstname" type="text" value="' + (u.first_name || '') + '" placeholder="Олексій" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box"></div>'
+      + '</div>'
+      + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Телефон</label>'
+      + '<input id="cab-phone" type="tel" value="' + (u.phone || '') + '" placeholder="+38 (050) 000-00-00" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
       + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Назва компанії</label>'
       + '<input id="cab-company" type="text" value="' + (u.company_name || '') + '" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px"></div>'
       + '<div><label style="font-size:12px;color:#888;font-weight:600;display:block;margin-bottom:4px">Email</label>'
@@ -1598,6 +1606,9 @@ function planFeature(icon, text) {
 }
 async function saveCabinetProfile() {
   const company = document.getElementById('cab-company').value.trim();
+  const lastName = document.getElementById('cab-lastname').value.trim();
+  const firstName = document.getElementById('cab-firstname').value.trim();
+  const phone = document.getElementById('cab-phone').value.trim();
   const oldPass = document.getElementById('cab-pass-old').value;
   const newPass = document.getElementById('cab-pass-new').value;
   const confirmPass = document.getElementById('cab-pass-confirm').value;
@@ -1609,12 +1620,15 @@ async function saveCabinetProfile() {
     if (newPass.length < 6) { msg.style.color = '#dc2626'; msg.textContent = 'Новий пароль мінімум 6 символів'; return; }
   }
   try {
-    const body = { company_name: company };
+    const body = { company_name: company, last_name: lastName, first_name: firstName, phone };
     if (oldPass && newPass) { body.old_password = oldPass; body.new_password = newPass; }
     const res = await api('/auth/profile', 'PUT', body);
     if (res && res.error) { msg.style.color = '#dc2626'; msg.textContent = res.error; return; }
     const u = JSON.parse(localStorage.getItem('user') || '{}');
     u.company_name = company;
+    u.last_name = lastName;
+    u.first_name = firstName;
+    u.phone = phone;
     localStorage.setItem('user', JSON.stringify(u));
     document.getElementById('userName').textContent = company || u.email || '';
     msg.style.color = '#16a34a';

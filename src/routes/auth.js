@@ -43,7 +43,7 @@ router.post('/login', async (req, res) => {
 const auth = require('../middleware/auth');
 
 router.put('/profile', auth, async (req, res) => {
-  const { company_name, old_password, new_password } = req.body;
+  const { company_name, last_name, first_name, phone, old_password, new_password } = req.body;
   try {
     if (old_password && new_password) {
       const userRes = await pool.query('SELECT password FROM users WHERE id=$1', [req.userId]);
@@ -53,8 +53,8 @@ router.put('/profile', auth, async (req, res) => {
       await pool.query('UPDATE users SET password=$1 WHERE id=$2', [hash, req.userId]);
     }
     const result = await pool.query(
-      'UPDATE users SET company_name=$1 WHERE id=$2 RETURNING id, email, company_name',
-      [company_name, req.userId]
+      'UPDATE users SET company_name=$1, last_name=$2, first_name=$3, phone=$4 WHERE id=$5 RETURNING id, email, company_name, last_name, first_name, phone',
+      [company_name, last_name || null, first_name || null, phone || null, req.userId]
     );
     res.json(result.rows[0]);
   } catch(e) {
