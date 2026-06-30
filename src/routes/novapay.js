@@ -235,6 +235,11 @@ router.post('/sync', auth, async (req, res) => {
 
     const conducted = docs.filter(d => d.StatusDocumentId === '8' || d.StatusDocumentId === '9');
     const keywords = await getUserKeywords(req.userId);
+    // Гарантуємо наявність типу в довіднику
+    await pool.query(
+      `INSERT INTO income_types (user_id, name) VALUES ($1, 'Наложений платіж') ON CONFLICT (user_id, name) DO NOTHING`,
+      [req.userId]
+    );
     let added = 0;
     for (const doc of conducted) {
       const amount = parseFloat(doc?.$ ?.Amount || doc.Amount || 0);
@@ -271,12 +276,11 @@ router.post('/sync', auth, async (req, res) => {
 // Перекласифікувати існуючі NovaPay доходи як "Наложений платіж"
 router.post('/reclassify', auth, async (req, res) => {
   try {
-    // Debug: що є в БД для цього юзера з NovaPay
-    const debug = await pool.query(
-      `SELECT id, source, LEFT(description,80) as desc, type FROM incomes WHERE user_id=$1 AND source ILIKE '%nova%' LIMIT 5`,
+    // Переконуємось що тип існує в income_types
+    await pool.query(
+      `INSERT INTO income_types (user_id, name) VALUES ($1, 'Наложений платіж') ON CONFLICT (user_id, name) DO NOTHING`,
       [req.userId]
     );
-    console.log('NovaPay reclassify debug:', JSON.stringify(debug.rows));
 
     const result = await pool.query(
       `UPDATE incomes SET type='Наложений платіж'
@@ -285,8 +289,7 @@ router.post('/reclassify', auth, async (req, res) => {
          AND (description ILIKE '%переказ коштів по платежам%' OR description ILIKE '%прийнятим від населення%')`,
       [req.userId]
     );
-    console.log('NovaPay reclassify updated:', result.rowCount);
-    res.json({ updated: result.rowCount || 0, debug_rows: debug.rows });
+    res.json({ updated: result.rowCount || 0 });
   } catch (e) {
     console.error('NovaPay reclassify error:', e.message);
     res.status(500).json({ error: e.message });
