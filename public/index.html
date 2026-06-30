@@ -1260,8 +1260,9 @@ async function reclassifyNovaPay() {
   msg.textContent = 'Перекласифікую...';
   const res = await api('/integrations/novapay/reclassify', 'POST', {});
   if (res && res.updated !== undefined) {
-    msg.style.color = '#059669';
+    msg.style.color = res.updated > 0 ? '#059669' : '#888';
     msg.textContent = `✓ Оновлено ${res.updated} транзакцій`;
+    if (res.debug_rows) console.log('NovaPay reclassify debug:', res.debug_rows);
   } else {
     msg.style.color = '#dc3545';
     msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';

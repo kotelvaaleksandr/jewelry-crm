@@ -271,15 +271,24 @@ router.post('/sync', auth, async (req, res) => {
 // Перекласифікувати існуючі NovaPay доходи як "Наложений платіж"
 router.post('/reclassify', auth, async (req, res) => {
   try {
-    const result = await pool.query(
-      `UPDATE incomes SET type='Наложений платіж'
-       WHERE user_id=$1 AND source='NovaPay'
-         AND type IS DISTINCT FROM 'Внутрішній переказ'
-         AND description ILIKE '%переказ коштів по платежам, прийнятим від населення%'`,
+    // Debug: що є в БД для цього юзера з NovaPay
+    const debug = await pool.query(
+      `SELECT id, source, LEFT(description,80) as desc, type FROM incomes WHERE user_id=$1 AND source ILIKE '%nova%' LIMIT 5`,
       [req.userId]
     );
-    res.json({ updated: result.rowCount || 0 });
+    console.log('NovaPay reclassify debug:', JSON.stringify(debug.rows));
+
+    const result = await pool.query(
+      `UPDATE incomes SET type='Наложений платіж'
+       WHERE user_id=$1
+         AND type IS DISTINCT FROM 'Внутрішній переказ'
+         AND (description ILIKE '%переказ коштів по платежам%' OR description ILIKE '%прийнятим від населення%')`,
+      [req.userId]
+    );
+    console.log('NovaPay reclassify updated:', result.rowCount);
+    res.json({ updated: result.rowCount || 0, debug_rows: debug.rows });
   } catch (e) {
+    console.error('NovaPay reclassify error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
