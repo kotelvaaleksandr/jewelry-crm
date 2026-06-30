@@ -109,18 +109,19 @@
       <button id="plan-tab-year"    onclick="switchPlanPeriod('year')"    style="flex:1;padding:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#666;border-left:1px solid #e0e0e0">Рік</button>
     </div>
     <div class="card">
-      <h2 style="margin-bottom:4px">Планові показники</h2>
-      <p style="font-size:13px;color:#888;margin-bottom:20px">Встановіть цільові значення для кожної статті доходів і витрат</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div>
+          <h2 style="margin-bottom:2px">Планові показники</h2>
+          <p style="font-size:13px;color:#888">Встановіть цільові значення для кожної статті</p>
+        </div>
+        <button id="plan-save-btn" class="btn" onclick="saveAllPlans()" style="background:#6366f1;padding:10px 24px;font-size:14px">Зберегти</button>
+      </div>
 
       <h3 style="font-size:14px;font-weight:700;color:#059669;margin-bottom:12px">Доходи</h3>
       <div id="plan-incomes" style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px"></div>
 
       <h3 style="font-size:14px;font-weight:700;color:#dc2626;margin-bottom:12px">Витрати</h3>
       <div id="plan-expenses" style="display:flex;flex-direction:column;gap:10px"></div>
-
-      <div style="margin-top:20px">
-        <button class="btn" onclick="saveAllPlans()" style="background:#6366f1;padding:10px 28px">Зберегти плани</button>
-      </div>
     </div>
   </div>
 
@@ -1273,8 +1274,10 @@ async function loadPlan() {
 }
 
 async function saveAllPlans() {
+  const btn = document.getElementById('plan-save-btn');
+  btn.textContent = 'Збереження...';
+  btn.disabled = true;
   const rows = document.querySelectorAll('#tab-plan [id$="_name"]');
-  let saved = 0;
   for (const el of rows) {
     const id = el.id.replace('_name','');
     const name = el.value;
@@ -1283,10 +1286,13 @@ async function saveAllPlans() {
     const valueType = document.getElementById(id + '_valuetype').value;
     const value = parseFloat(document.getElementById(id + '_value').value) || null;
     const condition = document.getElementById(id + '_condition').value;
-    await api('/plans', 'POST', { category: name, category_type: type, period: currentPlanPeriod, value_type: valueType, value, condition, active });
-    saved++;
+    const res = await api('/plans', 'POST', { category: name, category_type: type, period: currentPlanPeriod, value_type: valueType, value, condition, active });
+    // Оновлюємо plansData в пам'яті одразу
+    if (res && res.id) plansData[`${type}_${name}_${currentPlanPeriod}`] = res;
   }
-  alert(`Збережено ${saved} планів на "${{'week':'тиждень','month':'місяць','quarter':'квартал','year':'рік'}[currentPlanPeriod]}"`);
+  btn.textContent = '✓ Збережено';
+  btn.disabled = false;
+  setTimeout(() => { btn.textContent = 'Зберегти'; }, 2000);
 }
 
 loadDashboard();
