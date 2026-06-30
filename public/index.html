@@ -74,6 +74,12 @@
       <div id="dist-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"></div>
     </div>
 
+    <!-- Аналітика планових показників -->
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="margin-bottom:16px">Виконання плану</h2>
+      <div id="dash-plan-analytics"></div>
+    </div>
+
     <!-- Регулярні витрати поточного місяця -->
     <div class="card" style="margin-bottom:16px">
       <h2 style="margin-bottom:14px">Регулярні витрати (поточний місяць)</h2>
@@ -610,6 +616,97 @@ async function loadDashboard() {
     `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
       <div style="width:12px;height:12px;border-radius:3px;background:${PROFIT_COLOR};flex-shrink:0"></div>Прибуток
     </div>`;
+
+  // --- Аналітика планових показників ---
+  const plans = await api('/plans');
+  const activePlans = (plans || []).filter(p => p.active);
+
+  const now2 = new Date();
+  const [wMon, wSun] = getWeekBounds();
+  const qMonth = [1,4,7,10].reduce((prev,m) => m <= now2.getMonth()+1 ? m : prev);
+  const qFrom = `${now2.getFullYear()}-${String(qMonth).padStart(2,'0')}-01`;
+  const qLastM = qMonth + 2;
+  const qLastD = new Date(now2.getFullYear(), qLastM, 0).getDate();
+  const qTo = `${now2.getFullYear()}-${String(qLastM).padStart(2,'0')}-${qLastD}`;
+
+  const periods = [
+    { key:'week',    label:'Тиждень',  from: wMon.toISOString().slice(0,10), to: wSun.toISOString().slice(0,10) },
+    { key:'month',   label:'Місяць',   from: monthFrom, to: monthTo },
+    { key:'quarter', label:'Квартал',  from: qFrom, to: qTo },
+    { key:'year',    label:'Рік',      from: yearFrom, to: yearTo }
+  ];
+
+  function calcActual(plan, from, to) {
+    if (plan.category === 'Виручка' && plan.category_type === 'income') {
+      const actual = incomes.filter(r => inPeriod(r.date, from, to)).reduce((s,r) => s + +r.amount, 0);
+      if (plan.value_type === 'percent') return { actual, total: actual, pct: 100 };
+      return { actual, total: null };
+    }
+    const actual = expenses.filter(r => inPeriod(r.date, from, to) && r.category === plan.category).reduce((s,r) => s + +r.amount, 0);
+    if (plan.value_type === 'percent') {
+      const totalInc = incomes.filter(r => inPeriod(r.date, from, to)).reduce((s,r) => s + +r.amount, 0);
+      return { actual, total: totalInc, pct: totalInc > 0 ? actual/totalInc*100 : 0 };
+    }
+    return { actual, total: null };
+  }
+
+  function planAchieved(plan, result) {
+    const planVal = +plan.value;
+    const compare = plan.value_type === 'percent' ? result.pct : result.actual;
+    if (plan.condition === 'gte') return compare >= planVal;
+    if (plan.condition === 'eq')  return Math.abs(compare - planVal) < 0.01;
+    if (plan.condition === 'lte') return compare <= planVal;
+    return false;
+  }
+
+  function renderPlanAnalytics(periodPlans, from, to) {
+    if (!periodPlans.length) return '<p style="color:#aaa;font-size:13px;padding:4px 0">Немає активних планів для цього періоду</p>';
+    return periodPlans.map(plan => {
+      const result = calcActual(plan, from, to);
+      const planVal = +plan.value;
+      const isPercent = plan.value_type === 'percent';
+      const actualDisplay = isPercent ? result.pct.toFixed(1) + '%' : fmt(result.actual);
+      const planDisplay = isPercent ? planVal.toFixed(1) + '%' : fmt(planVal);
+      const achieved = planAchieved(plan, result);
+      const condLabel = { gte:'≥', eq:'=', lte:'≤' }[plan.condition] || '';
+
+      // Прогрес бар
+      let barPct, barColor;
+      if (plan.condition === 'lte') {
+        // Витрати: чим менше тим краще
+        barPct = planVal > 0 ? Math.min((isPercent ? result.pct : result.actual) / planVal * 100, 100) : 0;
+        barColor = achieved ? '#059669' : '#dc2626';
+      } else {
+        barPct = planVal > 0 ? Math.min((isPercent ? result.pct : result.actual) / planVal * 100, 100) : 0;
+        barColor = achieved ? '#059669' : (barPct >= 75 ? '#f59e0b' : '#dc2626');
+      }
+
+      return `<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:13px;font-weight:600;color:#333">${plan.category}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:#666">${actualDisplay} <span style="color:#aaa">/ ${condLabel} ${planDisplay}</span></span>
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:${achieved?'#dcfce7':'#fee2e2'};color:${achieved?'#059669':'#dc2626'}">${achieved?'✓ Виконано':'✕ Не виконано'}</span>
+          </div>
+        </div>
+        <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:4px;transition:width .4s"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const analyticsHtml = periods.map(p => {
+    const pp = activePlans.filter(pl => pl.period === p.key);
+    return `<div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:#6366f1;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e0e7ff">${p.label}</div>
+      ${renderPlanAnalytics(pp, p.from, p.to)}
+    </div>`;
+  }).join('');
+
+  document.getElementById('dash-plan-analytics').innerHTML = activePlans.length
+    ? analyticsHtml
+    : '<p style="color:#aaa;font-size:13px">Немає активних планових показників. Налаштуйте їх у розділі <b>План</b>.</p>';
 
   // --- Регулярні витрати поточного місяця ---
   const regExpenses = await api('/regular-expenses');
