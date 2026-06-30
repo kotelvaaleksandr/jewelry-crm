@@ -1260,19 +1260,13 @@ async function reclassifyNovaPay() {
   msg.textContent = 'Перекласифікую...';
   const res = await api('/integrations/novapay/reclassify', 'POST', {});
   if (res && res.updated !== undefined) {
-    msg.style.color = res.updated > 0 ? '#059669' : '#888';
-    let debugText = '';
-    if (res.debug_rows && res.debug_rows.length > 0) {
-      const r = res.debug_rows[0];
-      debugText = ` | source="${r.source}" type="${r.type}" desc="${r.desc}"`;
-    } else {
-      debugText = ' | джерело nova не знайдено в БД';
-    }
-    msg.textContent = `Оновлено ${res.updated}${debugText}`;
+    msg.style.color = '#059669';
+    msg.textContent = `✓ Оновлено ${res.updated} транзакцій`;
   } else {
     msg.style.color = '#dc3545';
     msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';
   }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
 }
 
 async function loadMonoAccounts() {
