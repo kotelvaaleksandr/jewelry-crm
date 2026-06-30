@@ -1152,7 +1152,7 @@ async function loadPlan() {
   (regExp||[]).forEach(r => { if (!catNames.has(r.name)) allExpCats.push(r.name); });
 
   document.getElementById('plan-incomes').innerHTML =
-    (incTypes||[]).map(t => planRowHtml(t.name, 'income', plansData[`income_${t.name}`])).join('');
+    planRowHtml('Виручка', 'income', plansData['income_Виручка']);
   document.getElementById('plan-expenses').innerHTML =
     allExpCats.map(n => planRowHtml(n, 'expense', plansData[`expense_${n}`])).join('');
 }
