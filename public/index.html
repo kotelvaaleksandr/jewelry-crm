@@ -770,29 +770,39 @@ async function loadDashboard() {
   ];
 
   function calcActual(plan, from, to) {
+    const planVal = +plan.value;
+    const isPercent = plan.value_type === 'percent';
+
     if (plan.category === 'Виручка' && plan.category_type === 'income') {
       const actual = incomes.filter(r => inPeriod(r.date, from, to)).reduce((s,r) => s + +r.amount, 0);
-      if (plan.value_type === 'percent') return { actual, total: actual, pct: 100 };
-      return { actual, total: null };
+      if (isPercent) {
+        // % від попереднього: базове не рахуємо, план — просто показник росту (показуємо факт vs планова сума)
+        return { actual, total: actual, pct: 100 };
+      }
+      // Абсолютне: факт vs планова сума в ₴
+      const pct = planVal > 0 ? actual / planVal * 100 : 0;
+      return { actual, planned: planVal, pct, isAbsolute: true };
     }
-    // Закупівля: планова сума = виручка*0.4*(1 + plan%/100), фактична = сума закупок
+
+    // Закупівля: % → планова = виручка*0.4*(1+%/100); ₴ → планова = введена сума
     if (plan.category === 'Закупівля' && plan.category_type === 'expense') {
       const revenue = incomes.filter(r => inPeriod(r.date, from, to) && r.type !== 'Внутрішній переказ').reduce((s,r) => s + +r.amount, 0);
       const actualPurchase = purchases.filter(r => inPeriod(r.date, from, to)).reduce((s,r) => s + +r.amount, 0);
       const minPurchase = revenue * 0.4;
-      const planVal = +plan.value;
-      const plannedPurchase = plan.value_type === 'percent'
-        ? minPurchase * (1 + planVal / 100)
-        : planVal;
+      const plannedPurchase = isPercent ? minPurchase * (1 + planVal / 100) : planVal;
       const pct = plannedPurchase > 0 ? actualPurchase / plannedPurchase * 100 : 0;
-      return { actual: actualPurchase, planned: plannedPurchase, minPurchase, revenue, pct, isPurchasePlan: true };
+      return { actual: actualPurchase, planned: plannedPurchase, minPurchase: isPercent ? minPurchase : null, revenue: isPercent ? revenue : null, pct, isPurchasePlan: true };
     }
+
+    // Інші витрати
     const actual = expenses.filter(r => inPeriod(r.date, from, to) && r.category === plan.category).reduce((s,r) => s + +r.amount, 0);
-    if (plan.value_type === 'percent') {
+    if (isPercent) {
       const totalInc = incomes.filter(r => inPeriod(r.date, from, to)).reduce((s,r) => s + +r.amount, 0);
       return { actual, total: totalInc, pct: totalInc > 0 ? actual/totalInc*100 : 0 };
     }
-    return { actual, total: null };
+    // Абсолютне
+    const pct = planVal > 0 ? actual / planVal * 100 : 0;
+    return { actual, planned: planVal, pct, isAbsolute: true };
   }
 
   function planAchieved(plan, result) {
@@ -838,10 +848,32 @@ async function loadDashboard() {
 
       const planVal = +plan.value;
       const isPercent = plan.value_type === 'percent';
-      actualDisplay = isPercent ? result.pct.toFixed(1) + '%' : fmt(result.actual);
-      planDisplay = isPercent ? planVal.toFixed(1) + '%' : fmt(planVal);
       condLabel = '≥';
-      barPct = planVal > 0 ? Math.min((isPercent ? result.pct : result.actual) / planVal * 100, 100) : 0;
+
+      if (result.isAbsolute) {
+        // Абсолютне значення: показуємо факт ₴ / план ₴ + % виконання
+        actualDisplay = fmt(result.actual);
+        planDisplay = fmt(planVal);
+        barPct = Math.min(result.pct, 100);
+        barColor = achieved ? '#059669' : (barPct >= 75 ? '#f59e0b' : '#dc2626');
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <span style="font-size:13px;font-weight:600;color:#333">${plan.category}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:#666">${actualDisplay} <span style="color:#aaa">/ ${condLabel} ${planDisplay}</span> <span style="color:#888">(${result.pct.toFixed(1)}%)</span></span>
+              <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:${achieved?'#dcfce7':'#fee2e2'};color:${achieved?'#059669':'#dc2626'}">${achieved?'✓ Виконано':'✕ Не виконано'}</span>
+            </div>
+          </div>
+          <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>`;
+      }
+
+      // % від виручки
+      actualDisplay = result.pct.toFixed(1) + '%';
+      planDisplay = planVal.toFixed(1) + '%';
+      barPct = planVal > 0 ? Math.min(result.pct / planVal * 100, 100) : 0;
       barColor = achieved ? '#059669' : (barPct >= 75 ? '#f59e0b' : '#dc2626');
 
       return `<div style="margin-bottom:12px">
