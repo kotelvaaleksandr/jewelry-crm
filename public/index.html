@@ -138,33 +138,10 @@
       </form>
     </div>
     <div class="card">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Від</label>
-          <input type="date" id="i-filter-from" oninput="loadIncomes()" style="width:140px">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">До</label>
-          <input type="date" id="i-filter-to" oninput="loadIncomes()" style="width:140px">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Тип</label>
-          <select id="i-filter-type" onchange="loadIncomes()" style="width:160px">
-            <option value="">Всі</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Джерело</label>
-          <select id="i-filter-source" onchange="loadIncomes()" style="width:140px">
-            <option value="">Всі</option>
-            <option value="Monobank">Monobank</option>
-            <option value="ПриватБанк">ПриватБанк</option>
-            <option value="manual">Ручне введення</option>
-          </select>
-        </div>
-        <button class="btn" onclick="clearFilters('i')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
-        <button class="btn" onclick="toggleTypeManager('income')" style="background:#6366f1;padding:8px 14px;font-size:12px">⚙ Типи</button>
-        <button id="income-sort-btn" class="btn" onclick="toggleIncomeSort()" style="background:#0891b2;padding:8px 14px;font-size:12px">↓ Час</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn" onclick="clearFilters('i')" style="background:#888;padding:6px 12px;font-size:12px">Скинути</button>
+        <button class="btn" onclick="toggleTypeManager('income')" style="background:#6366f1;padding:6px 12px;font-size:12px">⚙ Типи</button>
+        <button id="income-sort-btn" class="btn" onclick="toggleIncomeSort()" style="background:#0891b2;padding:6px 12px;font-size:12px">↓ Час</button>
       </div>
       <div id="income-type-manager" style="display:none;border:1.5px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:14px;background:#f8f8f8">
         <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#444">Управління типами доходів</div>
@@ -174,8 +151,44 @@
           <button class="btn" onclick="addIncomeType()" style="padding:6px 14px;font-size:12px">+ Додати</button>
         </div>
       </div>
-      <table><thead><tr><th>Дата</th><th>Тип</th><th>Джерело</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
-      <tbody id="incomes-list"></tbody></table>
+      <table>
+        <thead>
+          <tr><th>Дата</th><th>Тип</th><th>Джерело</th><th>Сума</th><th>Опис</th><th></th></tr>
+          <tr style="background:#f8f9fa">
+            <td style="padding:4px">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <input type="date" id="i-filter-from" oninput="loadIncomes()" placeholder="Від" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="date" id="i-filter-to" oninput="loadIncomes()" placeholder="До" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              </div>
+            </td>
+            <td style="padding:4px">
+              <select id="i-filter-type" onchange="loadIncomes()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <option value="">Всі типи</option>
+              </select>
+            </td>
+            <td style="padding:4px">
+              <select id="i-filter-source" onchange="loadIncomes()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <option value="">Всі</option>
+                <option value="Monobank">Monobank</option>
+                <option value="ПриватБанк">ПриватБанк</option>
+                <option value="NovaPay">NovaPay</option>
+                <option value="manual">Ручне введення</option>
+              </select>
+            </td>
+            <td style="padding:4px">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <input type="number" id="i-filter-min" oninput="loadIncomes()" placeholder="від ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="number" id="i-filter-max" oninput="loadIncomes()" placeholder="до ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              </div>
+            </td>
+            <td style="padding:4px">
+              <input type="text" id="i-filter-desc" oninput="loadIncomes()" placeholder="Пошук в описі..." style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+            </td>
+            <td></td>
+          </tr>
+        </thead>
+        <tbody id="incomes-list"></tbody>
+      </table>
     </div>
   </div>
 
@@ -192,33 +205,10 @@
       </form>
     </div>
     <div class="card">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Від</label>
-          <input type="date" id="e-filter-from" oninput="loadExpenses()" style="width:140px">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">До</label>
-          <input type="date" id="e-filter-to" oninput="loadExpenses()" style="width:140px">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Категорія</label>
-          <select id="e-filter-cat" onchange="loadExpenses()" style="width:160px">
-            <option value="">Всі</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#666">Джерело</label>
-          <select id="e-filter-source" onchange="loadExpenses()" style="width:140px">
-            <option value="">Всі</option>
-            <option value="Monobank">Monobank</option>
-            <option value="ПриватБанк">ПриватБанк</option>
-            <option value="manual">Ручне введення</option>
-          </select>
-        </div>
-        <button class="btn" onclick="clearFilters('e')" style="background:#888;padding:8px 14px;font-size:12px">Скинути</button>
-        <button class="btn" onclick="toggleTypeManager('expense')" style="background:#6366f1;padding:8px 14px;font-size:12px">⚙ Категорії</button>
-        <button id="expense-sort-btn" class="btn" onclick="toggleExpenseSort()" style="background:#0891b2;padding:8px 14px;font-size:12px">↓ Час</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn" onclick="clearFilters('e')" style="background:#888;padding:6px 12px;font-size:12px">Скинути</button>
+        <button class="btn" onclick="toggleTypeManager('expense')" style="background:#6366f1;padding:6px 12px;font-size:12px">⚙ Категорії</button>
+        <button id="expense-sort-btn" class="btn" onclick="toggleExpenseSort()" style="background:#0891b2;padding:6px 12px;font-size:12px">↓ Час</button>
       </div>
       <div id="expense-type-manager" style="display:none;border:1.5px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:14px;background:#f8f8f8">
         <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#444">Управління категоріями витрат</div>
@@ -228,8 +218,44 @@
           <button class="btn" onclick="addExpenseCategory()" style="padding:6px 14px;font-size:12px">+ Додати</button>
         </div>
       </div>
-      <table><thead><tr><th>Дата</th><th>Категорія</th><th>Джерело</th><th>Сума</th><th>Опис</th><th></th></tr></thead>
-      <tbody id="expenses-list"></tbody></table>
+      <table>
+        <thead>
+          <tr><th>Дата</th><th>Категорія</th><th>Джерело</th><th>Сума</th><th>Опис</th><th></th></tr>
+          <tr style="background:#f8f9fa">
+            <td style="padding:4px">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <input type="date" id="e-filter-from" oninput="loadExpenses()" placeholder="Від" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="date" id="e-filter-to" oninput="loadExpenses()" placeholder="До" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              </div>
+            </td>
+            <td style="padding:4px">
+              <select id="e-filter-cat" onchange="loadExpenses()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <option value="">Всі категорії</option>
+              </select>
+            </td>
+            <td style="padding:4px">
+              <select id="e-filter-source" onchange="loadExpenses()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <option value="">Всі</option>
+                <option value="Monobank">Monobank</option>
+                <option value="ПриватБанк">ПриватБанк</option>
+                <option value="NovaPay">NovaPay</option>
+                <option value="manual">Ручне введення</option>
+              </select>
+            </td>
+            <td style="padding:4px">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <input type="number" id="e-filter-min" oninput="loadExpenses()" placeholder="від ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="number" id="e-filter-max" oninput="loadExpenses()" placeholder="до ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              </div>
+            </td>
+            <td style="padding:4px">
+              <input type="text" id="e-filter-desc" oninput="loadExpenses()" placeholder="Пошук в описі..." style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+            </td>
+            <td></td>
+          </tr>
+        </thead>
+        <tbody id="expenses-list"></tbody>
+      </table>
     </div>
   </div>
 
@@ -940,7 +966,7 @@ async function addExpenseCategory() {
 }
 
 function clearFilters(prefix) {
-  ['from','to','type','cat','source'].forEach(f => {
+  ['from','to','type','cat','source','min','max','desc'].forEach(f => {
     const el = document.getElementById(prefix+'-filter-'+f);
     if (el) el.value = '';
   });
@@ -955,12 +981,18 @@ async function loadIncomes() {
   const to = document.getElementById('i-filter-to')?.value || '';
   const type = document.getElementById('i-filter-type')?.value || '';
   const source = document.getElementById('i-filter-source')?.value || '';
+  const minAmt = parseFloat(document.getElementById('i-filter-min')?.value) || 0;
+  const maxAmt = parseFloat(document.getElementById('i-filter-max')?.value) || 0;
+  const desc = (document.getElementById('i-filter-desc')?.value || '').toLowerCase();
   let data = await api('/incomes');
   if (from) data = data.filter(r => r.date.slice(0, 10) >= from);
   if (to) data = data.filter(r => r.date.slice(0, 10) <= to);
   if (type) data = data.filter(r => r.type === type);
   if (source === 'manual') data = data.filter(r => !r.source);
   else if (source) data = data.filter(r => r.source === source);
+  if (minAmt) data = data.filter(r => parseFloat(r.amount) >= minAmt);
+  if (maxAmt) data = data.filter(r => parseFloat(r.amount) <= maxAmt);
+  if (desc) data = data.filter(r => (r.description || '').toLowerCase().includes(desc));
   if (incomeSortAsc) {
     data = data.slice().sort((a, b) => {
       const ta = a.transaction_time ? new Date(a.transaction_time) : new Date(a.date);
@@ -1019,12 +1051,18 @@ async function loadExpenses() {
   const to = document.getElementById('e-filter-to')?.value || '';
   const cat = document.getElementById('e-filter-cat')?.value || '';
   const source = document.getElementById('e-filter-source')?.value || '';
+  const minAmt = parseFloat(document.getElementById('e-filter-min')?.value) || 0;
+  const maxAmt = parseFloat(document.getElementById('e-filter-max')?.value) || 0;
+  const desc = (document.getElementById('e-filter-desc')?.value || '').toLowerCase();
   let data = await api('/expenses');
   if (from) data = data.filter(r => r.date.slice(0, 10) >= from);
   if (to) data = data.filter(r => r.date.slice(0, 10) <= to);
   if (cat) data = data.filter(r => r.category === cat);
   if (source === 'manual') data = data.filter(r => !r.source);
   else if (source) data = data.filter(r => r.source === source);
+  if (minAmt) data = data.filter(r => parseFloat(r.amount) >= minAmt);
+  if (maxAmt) data = data.filter(r => parseFloat(r.amount) <= maxAmt);
+  if (desc) data = data.filter(r => (r.description || '').toLowerCase().includes(desc));
   if (expenseSortAsc) {
     data = data.slice().sort((a, b) => {
       const ta = a.transaction_time ? new Date(a.transaction_time) : new Date(a.date);
