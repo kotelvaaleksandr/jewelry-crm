@@ -546,14 +546,26 @@ async function syncAllBanks() {
   loadDashboard();
 }
 
+function getQuarterStart() {
+  const now = new Date();
+  const month = now.getMonth();
+  const qMonth = month - (month % 3);
+  return `${now.getFullYear()}-${String(qMonth + 1).padStart(2, '0')}-01`;
+}
+
+function setDefaultDateFilters(prefix) {
+  const fromEl = document.getElementById(prefix + '-filter-from');
+  if (fromEl && !fromEl.value) fromEl.value = getQuarterStart();
+}
+
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   event.target.classList.add('active');
   if (name === 'dashboard') loadDashboard();
-  if (name === 'incomes') loadIncomeTypes().then(loadIncomes);
-  if (name === 'expenses') loadExpenseCategories().then(loadExpenses);
+  if (name === 'incomes') { setDefaultDateFilters('i'); loadIncomeTypes().then(loadIncomes); }
+  if (name === 'expenses') { setDefaultDateFilters('e'); loadExpenseCategories().then(loadExpenses); }
   if (name === 'purchases') loadPurchases();
   if (name === 'plan') loadPlan();
   if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); loadKeywords(); loadExpenseRules(); }
