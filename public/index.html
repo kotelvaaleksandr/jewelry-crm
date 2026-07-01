@@ -1157,16 +1157,25 @@ function renderExpenseRules() {
     container.innerHTML = '<div style="font-size:13px;color:#aaa">Немає правил. Натисніть «+ Додати правило».</div>';
     return;
   }
-  container.innerHTML = expenseRules.map((r, i) => `
-    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center">
+  // Список категорій: з expenseCategories + "Внутрішній переказ" + регулярні витрати
+  const cats = ['Внутрішній переказ', ...expenseCategories.map(c => c.name),
+                 ...(Array.isArray(window._regExpNames) ? window._regExpNames : [])];
+  const uniqueCats = [...new Set(cats)];
+
+  container.innerHTML = expenseRules.map((r, i) => {
+    const opts = uniqueCats.map(n => `<option value="${escHtml(n)}"${n===r.category?' selected':''}>${escHtml(n)}</option>`).join('');
+    return `<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center">
       <input type="text" value="${escHtml(r.keyword)}" placeholder="Ключове слово в описі"
         oninput="expenseRules[${i}].keyword=this.value"
         style="padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
-      <input type="text" value="${escHtml(r.category)}" placeholder="Категорія"
-        oninput="expenseRules[${i}].category=this.value"
-        style="padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
+      <select onchange="expenseRules[${i}].category=this.value"
+        style="padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;background:#fff">
+        <option value="">— оберіть категорію —</option>
+        ${opts}
+      </select>
       <button onclick="removeExpenseRule(${i})" style="border:none;background:#fee2e2;color:#dc2626;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:14px">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
