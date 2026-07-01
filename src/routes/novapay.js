@@ -103,7 +103,9 @@ function escapeXml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// Кеш JWT
+// In-memory lock: якщо auth вже виконується для цього userId — чекаємо, не запускаємо нову
+const authLocks = {};
+
 async function getJwt(userId) {
   const row = await pool.query(
     'SELECT jwt_token, jwt_expiry FROM integrations WHERE user_id=$1 AND provider=$2',
@@ -111,7 +113,24 @@ async function getJwt(userId) {
   );
   const { jwt_token, jwt_expiry } = row.rows[0] || {};
   if (jwt_token && jwt_expiry && new Date(jwt_expiry) > new Date(Date.now() + 60000)) return jwt_token;
-  return authenticate(userId);
+
+  // Якщо вже є активний auth для цього userId — приєднуємось до нього
+  if (authLocks[userId]) return authLocks[userId];
+
+  authLocks[userId] = (async () => {
+    try {
+      return await authenticate(userId);
+    } catch (e) {
+      // Одна автоматична повторна спроба через 2 сек
+      console.log('NovaPay auth failed, retrying in 2s...', e.message);
+      await new Promise(r => setTimeout(r, 2000));
+      return await authenticate(userId);
+    } finally {
+      delete authLocks[userId];
+    }
+  })();
+
+  return authLocks[userId];
 }
 
 // --- Підключення ---
