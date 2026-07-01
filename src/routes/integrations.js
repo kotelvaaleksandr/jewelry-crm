@@ -2,7 +2,7 @@ const express = require('express');
 const https = require('https');
 const pool = require('../db');
 const auth = require('../middleware/auth');
-const { getUserKeywords, matchesKeywords } = require('../helpers/keywords');
+const { getUserKeywords, getUserExpenseRules, matchesKeywords, matchExpenseRule } = require('../helpers/keywords');
 
 const router = express.Router();
 
@@ -127,6 +127,7 @@ router.post('/privatbank/sync', auth, async (req, res) => {
     }
 
     const keywords = await getUserKeywords(req.userId);
+    const expRules = await getUserExpenseRules(req.userId);
     let added = 0;
     for (const tx of allTx) {
       const amount = parseFloat(tx.SUM || 0);
@@ -155,11 +156,12 @@ router.post('/privatbank/sync', auth, async (req, res) => {
           [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]
         );
       } else {
+        const expCat = isInternal ? 'Внутрішній переказ' : (matchExpenseRule(description, expRules) || 'Некласифіковано');
         await pool.query(
           `INSERT INTO expenses (user_id, amount, category, source, description, date, transaction_time, bank_tx_id)
            VALUES ($1,$2,$3,'ПриватБанк',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]
+          [req.userId, amount, expCat, description, date, txDate, txId]
         );
       }
       added++;
@@ -190,6 +192,7 @@ router.post('/monobank/sync', auth, async (req, res) => {
     if (!Array.isArray(data)) return res.status(400).json({ error: data.errorDescription || 'Помилка API' });
 
     const keywords = await getUserKeywords(req.userId);
+    const expRules = await getUserExpenseRules(req.userId);
     let added = 0;
     for (const tx of data) {
       const amount = tx.amount / 100;
@@ -205,11 +208,12 @@ router.post('/monobank/sync', auth, async (req, res) => {
           [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, tx.id]
         );
       } else {
+        const expCat = isInternal ? 'Внутрішній переказ' : (matchExpenseRule(description, expRules) || 'Некласифіковано');
         await pool.query(
           `INSERT INTO expenses (user_id, amount, category, source, description, date, transaction_time, bank_tx_id)
            VALUES ($1,$2,$3,'Monobank',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, Math.abs(amount), isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, tx.id]
+          [req.userId, Math.abs(amount), expCat, description, date, txDate, tx.id]
         );
       }
       added++;

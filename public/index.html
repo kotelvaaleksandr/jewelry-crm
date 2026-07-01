@@ -427,6 +427,19 @@
       </div>
     </div>
 
+    <!-- Авто-класифікація витрат -->
+    <div class="card" style="margin-top:20px">
+      <h2 style="margin-bottom:6px">Авто-класифікація витрат</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:16px">Якщо опис витрати містить ключове слово — їй автоматично присвоюється вказана категорія при синхронізації.</p>
+      <div id="expense-rules-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <button class="btn" onclick="addExpenseRule()" style="padding:6px 16px;font-size:12px;background:#6366f1">+ Додати правило</button>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+        <button class="btn" onclick="saveExpenseRules()" style="padding:8px 20px">Зберегти</button>
+        <button class="btn" onclick="applyExpenseRules()" style="padding:8px 20px;background:#6c757d">Застосувати до існуючих</button>
+        <span id="expense-rules-msg" style="font-size:13px;color:#666"></span>
+      </div>
+    </div>
+
     <!-- Регулярні витрати -->
     <div class="card" style="margin-top:20px">
       <h2 style="margin-bottom:16px">Регулярні витрати</h2>
@@ -513,7 +526,7 @@ function showTab(name) {
   if (name === 'expenses') loadExpenseCategories().then(loadExpenses);
   if (name === 'purchases') loadPurchases();
   if (name === 'plan') loadPlan();
-  if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); loadKeywords(); }
+  if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); loadKeywords(); loadExpenseRules(); }
 }
 
 async function api(path, method = 'GET', body) {
@@ -1127,6 +1140,71 @@ const providerMap = {
   privatbank: { form: 'privat-form', connected: 'privat-connected', input: 'privat-token' },
   novapay: { form: 'novapay-form', connected: 'novapay-connected', input: 'novapay-token' }
 };
+
+// ---- Авто-класифікація витрат ----
+let expenseRules = [];
+
+async function loadExpenseRules() {
+  const data = await api('/auth/expense-rules');
+  expenseRules = (data && data.rules) || [];
+  renderExpenseRules();
+}
+
+function renderExpenseRules() {
+  const container = document.getElementById('expense-rules-list');
+  if (!container) return;
+  if (!expenseRules.length) {
+    container.innerHTML = '<div style="font-size:13px;color:#aaa">Немає правил. Натисніть «+ Додати правило».</div>';
+    return;
+  }
+  container.innerHTML = expenseRules.map((r, i) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center">
+      <input type="text" value="${escHtml(r.keyword)}" placeholder="Ключове слово в описі"
+        oninput="expenseRules[${i}].keyword=this.value"
+        style="padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
+      <input type="text" value="${escHtml(r.category)}" placeholder="Категорія"
+        oninput="expenseRules[${i}].category=this.value"
+        style="padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
+      <button onclick="removeExpenseRule(${i})" style="border:none;background:#fee2e2;color:#dc2626;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:14px">✕</button>
+    </div>`).join('');
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function addExpenseRule() {
+  expenseRules.push({ keyword: '', category: '' });
+  renderExpenseRules();
+}
+
+function removeExpenseRule(i) {
+  expenseRules.splice(i, 1);
+  renderExpenseRules();
+}
+
+async function saveExpenseRules() {
+  const msg = document.getElementById('expense-rules-msg');
+  msg.textContent = 'Збереження...';
+  const res = await api('/auth/expense-rules', 'PUT', { rules: expenseRules.filter(r => r.keyword && r.category) });
+  if (res && res.success) {
+    msg.style.color = '#059669'; msg.textContent = '✓ Збережено';
+  } else {
+    msg.style.color = '#dc3545'; msg.textContent = 'Помилка';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 3000);
+}
+
+async function applyExpenseRules() {
+  const msg = document.getElementById('expense-rules-msg');
+  msg.style.color = '#666'; msg.textContent = 'Зберігаю та застосовую...';
+  await api('/auth/expense-rules', 'PUT', { rules: expenseRules.filter(r => r.keyword && r.category) });
+  const res = await api('/auth/apply-expense-rules', 'POST', {});
+  if (res && res.updated !== undefined) {
+    msg.style.color = '#059669'; msg.textContent = `✓ Оновлено ${res.updated} витрат`;
+  } else {
+    msg.style.color = '#dc3545'; msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
+}
 
 async function loadKeywords() {
   const data = await api('/auth/keywords');

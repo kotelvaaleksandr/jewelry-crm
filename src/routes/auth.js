@@ -124,4 +124,44 @@ router.post('/apply-keywords', auth, async (req, res) => {
   }
 });
 
+// Правила авто-класифікації витрат: [{keyword, category}]
+router.get('/expense-rules', auth, async (req, res) => {
+  const r = await pool.query('SELECT expense_rules FROM users WHERE id=$1', [req.userId]);
+  let rules = [];
+  try { rules = JSON.parse(r.rows[0]?.expense_rules || '[]'); } catch(e) {}
+  res.json({ rules });
+});
+
+router.put('/expense-rules', auth, async (req, res) => {
+  const { rules } = req.body; // [{keyword, category}]
+  await pool.query('UPDATE users SET expense_rules=$1 WHERE id=$2', [JSON.stringify(rules || []), req.userId]);
+  res.json({ success: true });
+});
+
+// Застосувати правила до існуючих витрат
+router.post('/apply-expense-rules', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT expense_rules FROM users WHERE id=$1', [req.userId]);
+    let rules = [];
+    try { rules = JSON.parse(r.rows[0]?.expense_rules || '[]'); } catch(e) {}
+    rules = rules.filter(r => r.keyword && r.category);
+    if (!rules.length) return res.json({ updated: 0 });
+
+    let updated = 0;
+    for (const rule of rules) {
+      const result = await pool.query(
+        `UPDATE expenses SET category=$1
+         WHERE user_id=$2 AND category IS DISTINCT FROM $1
+           AND category IS DISTINCT FROM 'Внутрішній переказ'
+           AND description ILIKE $3`,
+        [rule.category, req.userId, `%${rule.keyword}%`]
+      );
+      updated += result.rowCount || 0;
+    }
+    res.json({ updated });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
