@@ -799,10 +799,7 @@ async function loadDashboard() {
     if (result.isPurchasePlan) return result.pct >= 100;
     const planVal = +plan.value;
     const compare = plan.value_type === 'percent' ? result.pct : result.actual;
-    if (plan.condition === 'gte') return compare >= planVal;
-    if (plan.condition === 'eq')  return Math.abs(compare - planVal) < 0.01;
-    if (plan.condition === 'lte') return compare <= planVal;
-    return false;
+    return compare >= planVal;
   }
 
   function renderPlanAnalytics(periodPlans, from, to) {
@@ -843,15 +840,9 @@ async function loadDashboard() {
       const isPercent = plan.value_type === 'percent';
       actualDisplay = isPercent ? result.pct.toFixed(1) + '%' : fmt(result.actual);
       planDisplay = isPercent ? planVal.toFixed(1) + '%' : fmt(planVal);
-      condLabel = { gte:'≥', eq:'=', lte:'≤' }[plan.condition] || '';
-
-      if (plan.condition === 'lte') {
-        barPct = planVal > 0 ? Math.min((isPercent ? result.pct : result.actual) / planVal * 100, 100) : 0;
-        barColor = achieved ? '#059669' : '#dc2626';
-      } else {
-        barPct = planVal > 0 ? Math.min((isPercent ? result.pct : result.actual) / planVal * 100, 100) : 0;
-        barColor = achieved ? '#059669' : (barPct >= 75 ? '#f59e0b' : '#dc2626');
-      }
+      condLabel = '≥';
+      barPct = planVal > 0 ? Math.min((isPercent ? result.pct : result.actual) / planVal * 100, 100) : 0;
+      barColor = achieved ? '#059669' : (barPct >= 75 ? '#f59e0b' : '#dc2626');
 
       return `<div style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
@@ -1733,10 +1724,6 @@ function planRowHtml(name, type, plan) {
   const active = plan ? plan.active : true;
   const valueType = plan ? plan.value_type : 'absolute';
   const value = plan ? (plan.value ?? '') : '';
-  const condition = plan ? plan.condition : 'gte';
-  const condOpts = [['gte','≥ (не менше)'],['eq','= (дорівнює)'],['lte','≤ (не більше)']]
-    .map(([v,l]) => `<option value="${v}" ${condition===v?'selected':''}>${l}</option>`).join('');
-
   return `<div id="${id}_row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:#f8f9fa;border-radius:10px;border:1.5px solid ${active?'#e0e0e0':'#f0f0f0'}">
     <div style="min-width:160px;font-weight:600;font-size:13px;color:${active?'#1a1a1a':'#aaa'}">${name}</div>
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer;flex-shrink:0">
@@ -1749,7 +1736,6 @@ function planRowHtml(name, type, plan) {
         <button id="${id}_pct" onclick="setPlanValueType('${id}','percent')" style="padding:4px 10px;font-size:12px;background:${valueType==='percent'?'#6366f1':'#fff'};color:${valueType==='percent'?'#fff':'#333'};border:none;cursor:pointer">%</button>
       </div>
       <input type="number" id="${id}_value" value="${value}" placeholder="0" min="0" style="width:100px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-      <select id="${id}_condition" style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">${condOpts}</select>
     </div>
     <input type="hidden" id="${id}_type" value="${type}">
     <input type="hidden" id="${id}_name" value="${name}">
@@ -1810,14 +1796,12 @@ async function saveAllPlans() {
       const activeEl = document.getElementById(id + '_active');
       const valueTypeEl = document.getElementById(id + '_valuetype');
       const valueEl = document.getElementById(id + '_value');
-      const conditionEl = document.getElementById(id + '_condition');
-      if (!typeEl || !activeEl || !valueTypeEl || !valueEl || !conditionEl) continue;
+      if (!typeEl || !activeEl || !valueTypeEl || !valueEl) continue;
       const type = typeEl.value;
       const active = activeEl.checked;
       const valueType = valueTypeEl.value;
       const value = parseFloat(valueEl.value) || null;
-      const condition = conditionEl.value;
-      const res = await api('/plans', 'POST', { category: name, category_type: type, period: currentPlanPeriod, value_type: valueType, value, condition, active });
+      const res = await api('/plans', 'POST', { category: name, category_type: type, period: currentPlanPeriod, value_type: valueType, value, condition: 'gte', active });
       if (res && res.id) plansData[`${type}_${name}_${currentPlanPeriod}`] = res;
     }
     btn.textContent = '✓ Збережено';
