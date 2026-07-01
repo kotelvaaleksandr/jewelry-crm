@@ -2,7 +2,7 @@ const express = require('express');
 const https = require('https');
 const pool = require('../db');
 const auth = require('../middleware/auth');
-const { getUserKeywords, getUserExpenseRules, matchesKeywords, matchExpenseRule } = require('../helpers/keywords');
+const { getUserKeywords, getUserExpenseRules, getUserIncomeRules, matchesKeywords, matchExpenseRule, matchIncomeRule } = require('../helpers/keywords');
 
 const router = express.Router();
 
@@ -128,6 +128,7 @@ router.post('/privatbank/sync', auth, async (req, res) => {
 
     const keywords = await getUserKeywords(req.userId);
     const expRules = await getUserExpenseRules(req.userId);
+    const incRules = await getUserIncomeRules(req.userId);
     let added = 0;
     for (const tx of allTx) {
       const amount = parseFloat(tx.SUM || 0);
@@ -149,11 +150,12 @@ router.post('/privatbank/sync', auth, async (req, res) => {
       const isInternal = matchesKeywords(description, keywords);
 
       if (isIncome) {
+        const incType = isInternal ? 'Внутрішній переказ' : (matchIncomeRule(description, incRules) || 'Некласифіковано');
         await pool.query(
           `INSERT INTO incomes (user_id, amount, type, source, description, date, transaction_time, bank_tx_id)
            VALUES ($1,$2,$3,'ПриватБанк',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, txId]
+          [req.userId, amount, incType, description, date, txDate, txId]
         );
       } else {
         const expCat = isInternal ? 'Внутрішній переказ' : (matchExpenseRule(description, expRules) || 'Некласифіковано');
@@ -193,6 +195,7 @@ router.post('/monobank/sync', auth, async (req, res) => {
 
     const keywords = await getUserKeywords(req.userId);
     const expRules = await getUserExpenseRules(req.userId);
+    const incRules = await getUserIncomeRules(req.userId);
     let added = 0;
     for (const tx of data) {
       const amount = tx.amount / 100;
@@ -201,11 +204,12 @@ router.post('/monobank/sync', auth, async (req, res) => {
       const description = tx.description || '';
       const isInternal = matchesKeywords(description, keywords);
       if (amount > 0) {
+        const incType = isInternal ? 'Внутрішній переказ' : (matchIncomeRule(description, incRules) || 'Некласифіковано');
         await pool.query(
           `INSERT INTO incomes (user_id, amount, type, source, description, date, transaction_time, bank_tx_id)
            VALUES ($1,$2,$3,'Monobank',$4,$5,$6,$7)
            ON CONFLICT (bank_tx_id) DO NOTHING`,
-          [req.userId, amount, isInternal ? 'Внутрішній переказ' : 'Некласифіковано', description, date, txDate, tx.id]
+          [req.userId, amount, incType, description, date, txDate, tx.id]
         );
       } else {
         const expCat = isInternal ? 'Внутрішній переказ' : (matchExpenseRule(description, expRules) || 'Некласифіковано');

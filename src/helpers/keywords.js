@@ -11,13 +11,17 @@ async function getUserExpenseRules(userId) {
   try { return JSON.parse(r.rows[0]?.expense_rules || '[]').filter(r => r.keyword && r.category); } catch(e) { return []; }
 }
 
+async function getUserIncomeRules(userId) {
+  const r = await pool.query('SELECT income_rules FROM users WHERE id=$1', [userId]);
+  try { return JSON.parse(r.rows[0]?.income_rules || '[]').filter(r => r.keyword && r.type); } catch(e) { return []; }
+}
+
 function matchesKeywords(description, keywords) {
   if (!description || !keywords.length) return false;
   const lower = String(description).toLowerCase();
   return keywords.some(k => lower.includes(k));
 }
 
-// Повертає категорію з правил або null
 function matchExpenseRule(description, rules) {
   if (!description || !rules.length) return null;
   const lower = String(description).toLowerCase();
@@ -25,4 +29,11 @@ function matchExpenseRule(description, rules) {
   return match ? match.category : null;
 }
 
-module.exports = { getUserKeywords, getUserExpenseRules, matchesKeywords, matchExpenseRule };
+function matchIncomeRule(description, rules) {
+  if (!description || !rules.length) return null;
+  const lower = String(description).toLowerCase();
+  const match = rules.find(r => lower.includes(r.keyword.toLowerCase()));
+  return match ? match.type : null;
+}
+
+module.exports = { getUserKeywords, getUserExpenseRules, getUserIncomeRules, matchesKeywords, matchExpenseRule, matchIncomeRule };

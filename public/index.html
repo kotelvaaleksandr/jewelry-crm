@@ -457,6 +457,19 @@
       </div>
     </div>
 
+    <!-- Авто-класифікація доходів -->
+    <div class="card" style="margin-top:20px">
+      <h2 style="margin-bottom:6px">Авто-класифікація доходів</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:16px">Якщо опис доходу містить ключове слово — йому автоматично присвоюється вказаний тип при синхронізації.</p>
+      <div id="income-rules-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <button class="btn" onclick="addIncomeRule()" style="padding:6px 16px;font-size:12px;background:#6366f1">+ Додати правило</button>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+        <button class="btn" onclick="saveIncomeRules()" style="padding:8px 20px">Зберегти</button>
+        <button class="btn" onclick="applyIncomeRules()" style="padding:8px 20px;background:#6c757d">Застосувати до існуючих</button>
+        <span id="income-rules-msg" style="font-size:13px;color:#666"></span>
+      </div>
+    </div>
+
     <!-- Авто-класифікація витрат -->
     <div class="card" style="margin-top:20px">
       <h2 style="margin-bottom:6px">Авто-класифікація витрат</h2>
@@ -568,7 +581,7 @@ function showTab(name) {
   if (name === 'expenses') { setDefaultDateFilters('e'); loadExpenseCategories().then(loadExpenses); }
   if (name === 'purchases') loadPurchases();
   if (name === 'plan') loadPlan();
-  if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); loadKeywords(); loadExpenseRules(); }
+  if (name === 'settings') { loadIntegrations(); loadRegularExpenses(); loadKeywords(); loadExpenseRules(); loadIncomeRules(); }
 }
 
 async function api(path, method = 'GET', body) {
@@ -1312,6 +1325,75 @@ async function applyExpenseRules() {
   const res = await api('/auth/apply-expense-rules', 'POST', {});
   if (res && res.updated !== undefined) {
     msg.style.color = '#059669'; msg.textContent = `✓ Оновлено ${res.updated} витрат`;
+  } else {
+    msg.style.color = '#dc3545'; msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
+}
+
+// ---- Авто-класифікація доходів ----
+let incomeRules = [];
+
+async function loadIncomeRules() {
+  if (!incomeTypes.length) await loadIncomeTypes();
+  const data = await api('/auth/income-rules');
+  incomeRules = (data && data.rules) || [];
+  renderIncomeRules();
+}
+
+function renderIncomeRules() {
+  const container = document.getElementById('income-rules-list');
+  if (!container) return;
+  if (!incomeRules.length) {
+    container.innerHTML = '<div style="font-size:13px;color:#aaa">Немає правил. Натисніть «+ Додати правило».</div>';
+    return;
+  }
+  const types = [...new Set(['Некласифіковано', ...incomeTypes.map(t => t.name)])];
+  container.innerHTML = incomeRules.map((r, i) => {
+    const opts = types.map(n => `<option value="${escHtml(n)}"${n===r.type?' selected':''}>${escHtml(n)}</option>`).join('');
+    return `<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center">
+      <input type="text" value="${escHtml(r.keyword)}" placeholder="Ключове слово в описі"
+        oninput="incomeRules[${i}].keyword=this.value"
+        style="padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px">
+      <select onchange="incomeRules[${i}].type=this.value"
+        style="padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;background:#fff">
+        <option value="">— оберіть тип —</option>
+        ${opts}
+      </select>
+      <button onclick="removeIncomeRule(${i})" style="border:none;background:#fee2e2;color:#dc2626;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:14px">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addIncomeRule() {
+  incomeRules.push({ keyword: '', type: '' });
+  renderIncomeRules();
+}
+
+function removeIncomeRule(i) {
+  incomeRules.splice(i, 1);
+  renderIncomeRules();
+}
+
+async function saveIncomeRules() {
+  const msg = document.getElementById('income-rules-msg');
+  msg.textContent = 'Збереження...';
+  const res = await api('/auth/income-rules', 'PUT', { rules: incomeRules.filter(r => r.keyword && r.type) });
+  if (res && res.success) {
+    msg.style.color = '#059669'; msg.textContent = '✓ Збережено';
+  } else {
+    msg.style.color = '#dc3545'; msg.textContent = 'Помилка';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 3000);
+}
+
+async function applyIncomeRules() {
+  const msg = document.getElementById('income-rules-msg');
+  msg.style.color = '#666'; msg.textContent = 'Зберігаю та застосовую...';
+  await api('/auth/income-rules', 'PUT', { rules: incomeRules.filter(r => r.keyword && r.type) });
+  const res = await api('/auth/apply-income-rules', 'POST', {});
+  if (res && res.updated !== undefined) {
+    msg.style.color = '#059669'; msg.textContent = `✓ Оновлено ${res.updated} доходів`;
   } else {
     msg.style.color = '#dc3545'; msg.textContent = res?.error ? ('Помилка: ' + res.error) : 'Помилка сервера';
   }

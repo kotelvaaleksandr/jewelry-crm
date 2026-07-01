@@ -164,4 +164,43 @@ router.post('/apply-expense-rules', auth, async (req, res) => {
   }
 });
 
+// Правила авто-класифікації доходів: [{keyword, type}]
+router.get('/income-rules', auth, async (req, res) => {
+  const r = await pool.query('SELECT income_rules FROM users WHERE id=$1', [req.userId]);
+  let rules = [];
+  try { rules = JSON.parse(r.rows[0]?.income_rules || '[]'); } catch(e) {}
+  res.json({ rules });
+});
+
+router.put('/income-rules', auth, async (req, res) => {
+  const { rules } = req.body;
+  await pool.query('UPDATE users SET income_rules=$1 WHERE id=$2', [JSON.stringify(rules || []), req.userId]);
+  res.json({ success: true });
+});
+
+router.post('/apply-income-rules', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT income_rules FROM users WHERE id=$1', [req.userId]);
+    let rules = [];
+    try { rules = JSON.parse(r.rows[0]?.income_rules || '[]'); } catch(e) {}
+    rules = rules.filter(r => r.keyword && r.type);
+    if (!rules.length) return res.json({ updated: 0 });
+
+    let updated = 0;
+    for (const rule of rules) {
+      const result = await pool.query(
+        `UPDATE incomes SET type=$1
+         WHERE user_id=$2 AND type IS DISTINCT FROM $1
+           AND type IS DISTINCT FROM 'Внутрішній переказ'
+           AND description ILIKE $3`,
+        [rule.type, req.userId, `%${rule.keyword}%`]
+      );
+      updated += result.rowCount || 0;
+    }
+    res.json({ updated });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
