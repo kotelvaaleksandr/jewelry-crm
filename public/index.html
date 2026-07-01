@@ -657,36 +657,52 @@ function renderDistRow(label, data, colorMap) {
   if (!data) {
     return `<div style="margin-bottom:18px">
       <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:6px">${label}</div>
-      <div style="height:48px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px">Немає даних</div>
+      <div style="height:32px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px">Немає даних</div>
     </div>`;
   }
   const { income, cats, profit } = data;
-  const segments = Object.entries(cats).map(([name, val]) => ({ name, val, pct: val/income*100 }));
-  const profitPct = profit/income*100;
 
+  // Реальні % від виручки (для міток і тултіпів)
+  const segments = Object.entries(cats).map(([name, val]) => ({
+    name, val,
+    pct: val / income * 100  // реальний % від виручки
+  }));
+  const profitPct = profit / income * 100;
+
+  // Нормалізовані ширини: бар завжди 100%
+  const totalForBar = segments.reduce((s, x) => s + x.val, 0) + profit;
+  // totalForBar = max(income, totalExpenses) — завжди >= income
+  segments.forEach(s => { s.barPct = totalForBar > 0 ? s.val / totalForBar * 100 : 0; });
+  const profitBarPct = totalForBar > 0 ? profit / totalForBar * 100 : 0;
+
+  // Будуємо бари з нормалізованими шириними
   const bars = segments.map(s =>
-    `<div title="${s.name}: ${fmt(s.val)} (${s.pct.toFixed(1)}%)"
-      style="width:${s.pct}%;background:${colorMap[s.name]};height:100%;transition:opacity .2s"
-      onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"></div>`
+    `<div title="${s.name}: ${fmt(s.val)} (${s.pct.toFixed(1)}% від виручки)"
+      style="width:${s.barPct}%;background:${colorMap[s.name]};height:100%;position:relative;transition:opacity .2s;flex-shrink:0"
+      onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+      ${s.barPct >= 5 ? `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;pointer-events:none;white-space:nowrap">${s.pct.toFixed(0)}%</span>` : ''}
+    </div>`
   ).join('');
-  const profitBar = profitPct > 0
-    ? `<div title="Прибуток: ${fmt(profit)} (${profitPct.toFixed(1)}%)"
-        style="flex:1;background:${PROFIT_COLOR};height:100%;transition:opacity .2s"
-        onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"></div>`
+
+  const profitBar = profitBarPct > 0.5
+    ? `<div title="Прибуток: ${fmt(profit)} (${profitPct.toFixed(1)}% від виручки)"
+        style="width:${profitBarPct}%;background:${PROFIT_COLOR};height:100%;position:relative;transition:opacity .2s;flex-shrink:0"
+        onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+        ${profitBarPct >= 5 ? `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;pointer-events:none">Прибуток</span>` : ''}
+      </div>`
     : '';
 
-  const labels = segments.filter(s => s.pct >= 3).map(s =>
-    `<div style="position:absolute;left:${segments.slice(0,segments.indexOf(s)).reduce((a,x)=>a+x.pct,0) + s.pct/2}%;transform:translateX(-50%);font-size:10px;color:#fff;font-weight:700;white-space:nowrap;pointer-events:none">${s.pct.toFixed(0)}%</div>`
-  ).join('');
+  const lossNote = profit <= 0 && income > 0
+    ? `<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:8px">▼ Збиток ${fmt(Math.abs(income - segments.reduce((s,x)=>s+x.val,0)))}</span>`
+    : '';
 
   return `<div style="margin-bottom:18px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <span style="font-size:12px;font-weight:700;color:#444">${label}</span>
+      <span style="font-size:12px;font-weight:700;color:#444">${label}${lossNote}</span>
       <span style="font-size:12px;color:#666">Виручка: <b>${fmt(income)}</b></span>
     </div>
-    <div style="position:relative;height:24px;border-radius:6px;overflow:hidden;display:flex;cursor:default">
+    <div style="height:32px;border-radius:6px;overflow:hidden;display:flex;cursor:default">
       ${bars}${profitBar}
-      ${labels}
     </div>
   </div>`;
 }
