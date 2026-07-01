@@ -877,9 +877,9 @@ async function loadIncomeTypes() {
   incomeTypes = await api('/income-types');
   const filterSel = document.getElementById('i-filter-type');
   const cur = filterSel.value;
-  filterSel.innerHTML = '<option value="">Всі</option>' +
+  filterSel.innerHTML = '<option value="">Всі типи</option>' +
     incomeTypes.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
-  filterSel.value = cur;
+  filterSel.value = incomeTypes.find(t => t.name === cur) ? cur : '';
   const addSel = document.getElementById('i-type');
   if (addSel) {
     const cur2 = addSel.value;
@@ -902,8 +902,9 @@ async function loadExpenseCategories() {
 
   const filterSel = document.getElementById('e-filter-cat');
   const cur = filterSel.value;
-  filterSel.innerHTML = '<option value="">Всі</option>' + allExpenseOptions;
-  filterSel.value = cur;
+  filterSel.innerHTML = '<option value="">Всі категорії</option>' + allExpenseOptions;
+  const allNames = expenseCategories.map(c => c.name).concat(window._regExpNames || []);
+  filterSel.value = allNames.includes(cur) ? cur : '';
   const addSel = document.getElementById('e-cat');
   if (addSel) {
     const cur2 = addSel.value;
