@@ -159,17 +159,17 @@
           <tr style="background:#f8f9fa">
             <td style="padding:4px">
               <div style="display:flex;flex-direction:column;gap:2px">
-                <input type="date" id="i-filter-from" oninput="loadIncomes()" placeholder="Від" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
-                <input type="date" id="i-filter-to" oninput="loadIncomes()" placeholder="До" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="date" id="i-filter-from" oninput="loadIncomes(true)" placeholder="Від" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="date" id="i-filter-to" oninput="loadIncomes(true)" placeholder="До" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
               </div>
             </td>
             <td style="padding:4px">
-              <select id="i-filter-type" onchange="loadIncomes()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              <select id="i-filter-type" onchange="loadIncomes(true)" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
                 <option value="">Всі типи</option>
               </select>
             </td>
             <td style="padding:4px">
-              <select id="i-filter-source" onchange="loadIncomes()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              <select id="i-filter-source" onchange="loadIncomes(true)" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
                 <option value="">Всі</option>
                 <option value="Monobank">Monobank</option>
                 <option value="ПриватБанк">ПриватБанк</option>
@@ -179,18 +179,19 @@
             </td>
             <td style="padding:4px">
               <div style="display:flex;flex-direction:column;gap:2px">
-                <input type="number" id="i-filter-min" oninput="loadIncomes()" placeholder="від ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
-                <input type="number" id="i-filter-max" oninput="loadIncomes()" placeholder="до ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="number" id="i-filter-min" oninput="loadIncomes(true)" placeholder="від ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="number" id="i-filter-max" oninput="loadIncomes(true)" placeholder="до ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
               </div>
             </td>
             <td style="padding:4px">
-              <input type="text" id="i-filter-desc" oninput="loadIncomes()" placeholder="Пошук в описі..." style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              <input type="text" id="i-filter-desc" oninput="loadIncomes(true)" placeholder="Пошук в описі..." style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
             </td>
             <td></td>
           </tr>
         </thead>
         <tbody id="incomes-list"></tbody>
       </table>
+      <div id="incomes-pagination" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:14px;font-size:13px"></div>
     </div>
   </div>
 
@@ -226,17 +227,17 @@
           <tr style="background:#f8f9fa">
             <td style="padding:4px">
               <div style="display:flex;flex-direction:column;gap:2px">
-                <input type="date" id="e-filter-from" oninput="loadExpenses()" placeholder="Від" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
-                <input type="date" id="e-filter-to" oninput="loadExpenses()" placeholder="До" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="date" id="e-filter-from" oninput="loadExpenses(true)" placeholder="Від" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="date" id="e-filter-to" oninput="loadExpenses(true)" placeholder="До" style="width:130px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
               </div>
             </td>
             <td style="padding:4px">
-              <select id="e-filter-cat" onchange="loadExpenses()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              <select id="e-filter-cat" onchange="loadExpenses(true)" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
                 <option value="">Всі категорії</option>
               </select>
             </td>
             <td style="padding:4px">
-              <select id="e-filter-source" onchange="loadExpenses()" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              <select id="e-filter-source" onchange="loadExpenses(true)" style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
                 <option value="">Всі</option>
                 <option value="Monobank">Monobank</option>
                 <option value="ПриватБанк">ПриватБанк</option>
@@ -246,18 +247,19 @@
             </td>
             <td style="padding:4px">
               <div style="display:flex;flex-direction:column;gap:2px">
-                <input type="number" id="e-filter-min" oninput="loadExpenses()" placeholder="від ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
-                <input type="number" id="e-filter-max" oninput="loadExpenses()" placeholder="до ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="number" id="e-filter-min" oninput="loadExpenses(true)" placeholder="від ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+                <input type="number" id="e-filter-max" oninput="loadExpenses(true)" placeholder="до ₴" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
               </div>
             </td>
             <td style="padding:4px">
-              <input type="text" id="e-filter-desc" oninput="loadExpenses()" placeholder="Пошук в описі..." style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
+              <input type="text" id="e-filter-desc" oninput="loadExpenses(true)" placeholder="Пошук в описі..." style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #ddd;border-radius:5px">
             </td>
             <td></td>
           </tr>
         </thead>
         <tbody id="expenses-list"></tbody>
       </table>
+      <div id="expenses-pagination" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:14px;font-size:13px"></div>
     </div>
   </div>
 
@@ -978,7 +980,33 @@ function clearFilters(prefix) {
 
 let incomeSortAsc = false;
 
-async function loadIncomes() {
+let incomesPageSize = 50;
+let incomesPage = 1;
+
+function renderPagination(containerId, total, page, pageSize, onPage, onSize) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const sizes = [50, 100, 150, 200];
+  const pages = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || Math.abs(p - page) <= 2) pages.push(p);
+    else if (pages[pages.length - 1] !== '...') pages.push('...');
+  }
+  document.getElementById(containerId).innerHTML = `
+    <div style="color:#666;font-size:12px">Показано ${Math.min((page-1)*pageSize+1,total)}–${Math.min(page*pageSize,total)} з ${total}</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      ${pages.map(p => p === '...'
+        ? `<span style="padding:4px 2px;color:#999">…</span>`
+        : `<button onclick="${onPage}(${p})" style="padding:4px 10px;border:1.5px solid ${p===page?'#6c47ff':'#ddd'};border-radius:6px;background:${p===page?'#6c47ff':'#fff'};color:${p===page?'#fff':'#333'};cursor:pointer;font-size:12px;font-weight:${p===page?'700':'400'}">${p}</button>`
+      ).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="color:#666;font-size:12px">На сторінці:</span>
+      ${sizes.map(s => `<button onclick="${onSize}(${s})" style="padding:4px 10px;border:1.5px solid ${s===pageSize?'#6c47ff':'#ddd'};border-radius:6px;background:${s===pageSize?'#6c47ff':'#fff'};color:${s===pageSize?'#fff':'#333'};cursor:pointer;font-size:12px;font-weight:${s===pageSize?'700':'400'}">${s}</button>`).join('')}
+    </div>`;
+}
+
+async function loadIncomes(resetPage) {
+  if (resetPage) incomesPage = 1;
   const from = document.getElementById('i-filter-from')?.value || '';
   const to = document.getElementById('i-filter-to')?.value || '';
   const type = document.getElementById('i-filter-type')?.value || '';
@@ -1002,7 +1030,9 @@ async function loadIncomes() {
       return ta - tb;
     });
   }
-  document.getElementById('incomes-list').innerHTML = data.map(r => {
+  const total = data.length;
+  const page = data.slice((incomesPage - 1) * incomesPageSize, incomesPage * incomesPageSize);
+  document.getElementById('incomes-list').innerHTML = page.map(r => {
     const isInternal = r.type === 'Внутрішній переказ';
     const typeCell = isInternal
       ? `<span style="font-size:12px;color:#999;font-style:italic">↔ Внутрішній переказ</span>`
@@ -1017,7 +1047,11 @@ async function loadIncomes() {
       <td><div class="desc-cell" title="${escHtml(r.description||'')}">${escHtml(r.description||'')}</div></td>
       <td><button class="btn btn-red" onclick="deleteIncome(${r.id})">✕</button></td></tr>`;
   }).join('');
+  renderPagination('incomes-pagination', total, incomesPage, incomesPageSize, 'setIncomesPage', 'setIncomesPageSize');
 }
+
+function setIncomesPage(p) { incomesPage = p; loadIncomes(); }
+function setIncomesPageSize(s) { incomesPageSize = s; incomesPage = 1; loadIncomes(); }
 
 function toggleIncomeSort() {
   incomeSortAsc = !incomeSortAsc;
@@ -1047,8 +1081,11 @@ async function deleteIncome(id) {
 }
 
 let expenseSortAsc = false;
+let expensesPageSize = 50;
+let expensesPage = 1;
 
-async function loadExpenses() {
+async function loadExpenses(resetPage) {
+  if (resetPage) expensesPage = 1;
   const from = document.getElementById('e-filter-from')?.value || '';
   const to = document.getElementById('e-filter-to')?.value || '';
   const cat = document.getElementById('e-filter-cat')?.value || '';
@@ -1072,7 +1109,9 @@ async function loadExpenses() {
       return ta - tb;
     });
   }
-  document.getElementById('expenses-list').innerHTML = data.map(r => {
+  const total = data.length;
+  const page = data.slice((expensesPage - 1) * expensesPageSize, expensesPage * expensesPageSize);
+  document.getElementById('expenses-list').innerHTML = page.map(r => {
     const isInternal = r.category === 'Внутрішній переказ';
     const catCell = isInternal
       ? `<span style="font-size:12px;color:#999;font-style:italic">↔ Внутрішній переказ</span>`
@@ -1087,7 +1126,11 @@ async function loadExpenses() {
       <td><div class="desc-cell" title="${escHtml(r.description||'')}">${escHtml(r.description||'')}</div></td>
       <td><button class="btn btn-red" onclick="deleteExpense(${r.id})">✕</button></td></tr>`;
   }).join('');
+  renderPagination('expenses-pagination', total, expensesPage, expensesPageSize, 'setExpensesPage', 'setExpensesPageSize');
 }
+
+function setExpensesPage(p) { expensesPage = p; loadExpenses(); }
+function setExpensesPageSize(s) { expensesPageSize = s; expensesPage = 1; loadExpenses(); }
 
 function toggleExpenseSort() {
   expenseSortAsc = !expenseSortAsc;
